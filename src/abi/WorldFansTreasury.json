@@ -1,0 +1,25 @@
+{
+  "abi": [
+    {
+      "inputs": [],
+      "name": "burnRate",
+      "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "lastBurnEpoch",
+      "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "pendingBurn",
+      "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ]
+}

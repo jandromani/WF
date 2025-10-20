@@ -1,7 +1,9 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { TabItem, Tabs } from '@worldcoin/mini-apps-ui-kit-react';
+import { Bank, Home, User } from 'iconoir-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 import { Home, Group, Wallet, Settings } from 'iconoir-react';
 
@@ -12,26 +14,44 @@ const NAV_ITEMS = [
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
+const tabs = [
+  { value: '/home', icon: <Home />, label: 'Home' },
+  { value: '/wallet', icon: <Bank />, label: 'Wallet' },
+  { value: '/profile', icon: <User />, label: 'Profile', disabled: true },
+];
+
 export const Navigation = () => {
   const pathname = usePathname();
+  const router = useRouter();
+  const [value, setValue] = useState('/home');
+
+  useEffect(() => {
+    if (pathname && pathname !== value) {
+      const match = tabs.find((tab) => pathname.startsWith(tab.value));
+      if (match) {
+        setValue(match.value);
+      }
+    }
+  }, [pathname, value]);
+
+  const handleChange = (nextValue: string) => {
+    setValue(nextValue);
+    if (nextValue !== pathname) {
+      router.push(nextValue);
+    }
+  };
 
   return (
-    <nav className="flex w-full items-center justify-around border-t border-gray-200 bg-white py-3">
-      {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-        const isActive = pathname?.startsWith(href);
-        return (
-          <Link
-            key={href}
-            href={href}
-            className={`flex flex-col items-center gap-1 text-xs font-semibold ${
-              isActive ? 'text-black' : 'text-gray-400'
-            }`}
-          >
-            <Icon className="h-5 w-5" />
-            {label}
-          </Link>
-        );
-      })}
-    </nav>
+    <Tabs value={value} onValueChange={handleChange}>
+      {tabs.map((tab) => (
+        <TabItem
+          key={tab.value}
+          value={tab.value}
+          icon={tab.icon}
+          label={tab.label}
+          disabled={tab.disabled}
+        />
+      ))}
+    </Tabs>
   );
 };

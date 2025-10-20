@@ -1,30 +1,33 @@
-'use client';
+import { Page } from '@/components/PageLayout';
+import { ActivityList, BalanceCard, BuyWFANSButton } from '@/components/Wallet';
+import { auth } from '@/auth';
+import { Marble, TopBar } from '@worldcoin/mini-apps-ui-kit-react';
 
-import { ActivityList } from '@/components/wallet/ActivityList';
-import { BalanceCard } from '@/components/wallet/BalanceCard';
-import { BuyWFANSButton } from '@/components/wallet/BuyWFANSButton';
-import { useWallet } from '@/lib/hooks/useWallet';
-
-export default function WalletPage() {
-  const { balance, activity, isLoading } = useWallet();
+export default async function WalletPage() {
+  const session = await auth();
 
   return (
-    <div className="space-y-4">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold text-gray-900">Wallet</h1>
-        <p className="text-sm text-gray-500">
-          Gestiona tu saldo WFANS y revisa tus transacciones.
-        </p>
-      </header>
-      <BalanceCard balance={balance} isLoading={isLoading} />
-      <div className="rounded-2xl border border-gray-200 bg-white p-4">
-        <h2 className="text-base font-semibold text-gray-900">Comprar WFANS</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          Abre World App para completar la compra.
-        </p>
+    <>
+      <Page.Header className="p-0">
+        <TopBar
+          title="Wallet"
+          endAdornment={
+            session?.user ? (
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold capitalize">
+                  {session.user.username}
+                </p>
+                <Marble src={session.user.profilePictureUrl} className="w-12" />
+              </div>
+            ) : null
+          }
+        />
+      </Page.Header>
+      <Page.Main className="mb-16 flex flex-col items-center justify-start gap-5">
+        <BalanceCard />
+        <ActivityList />
         <BuyWFANSButton />
-      </div>
-      <ActivityList items={activity} isLoading={isLoading} />
-    </div>
+      </Page.Main>
+    </>
   );
 }

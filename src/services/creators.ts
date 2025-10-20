@@ -1,128 +1,119 @@
-export interface CreatorSummary {
+'use client';
+
+import { feed } from '@/services/feed';
+import { useSyncExternalStore } from 'react';
+
+export interface Creator {
   id: string;
-  name: string;
-  avatarUrl?: string;
-  description: string;
-  subscribers: number;
+  displayName: string;
+  handle: string;
   subscriptionPrice: number;
+  tierDescription: string;
+  avatar?: string;
+  subscribers: number;
+  isSubscribed: boolean;
+  tipOptions: number[];
+  totalTips: number;
 }
 
-export interface CreatorProfile extends CreatorSummary {
-  posts: number;
-  categories: string[];
-  tippingOptions: number[];
+interface CreatorsState {
+  creators: Creator[];
 }
 
-const CREATORS_ENDPOINT = '/api/creators';
+const listeners = new Set<(state: CreatorsState) => void>();
 
-const fallbackCreators: CreatorProfile[] = [
-  {
-    id: 'creator-1',
-    name: 'World Builder',
-    description: 'Arquitecto de experiencias inmersivas en WorldFans.',
-    subscribers: 1280,
-    subscriptionPrice: 12,
-    posts: 42,
-    categories: ['VR', 'Música'],
-    tippingOptions: [1, 5, 10],
+const initialState: CreatorsState = {
+  creators: [
+    {
+      id: 'alex',
+      displayName: 'Alex Rivera',
+      handle: '@alex',
+      subscriptionPrice: 12.5,
+      tierDescription: 'Behind-the-scenes drops twice a week',
+      avatar: undefined,
+      subscribers: 128,
+      isSubscribed: false,
+      tipOptions: [1, 2.5, 5],
+      totalTips: 322,
+    },
+    {
+      id: 'zara',
+      displayName: 'Zara Waves',
+      handle: '@zarawaves',
+      subscriptionPrice: 8,
+      tierDescription: 'Exclusive studio sessions every Friday',
+      avatar: undefined,
+      subscribers: 98,
+      isSubscribed: true,
+      tipOptions: [0.5, 1, 3],
+      totalTips: 210,
+    },
+  ],
+};
+
+let state: CreatorsState = initialState;
+
+const clone = (value: CreatorsState): CreatorsState => ({
+  creators: value.creators.map((creator) => ({ ...creator })),
+});
+
+const notify = () => {
+  const snapshot = clone(state);
+  listeners.forEach((listener) => listener(snapshot));
+};
+
+const updateCreator = (creatorId: string, updater: (creator: Creator) => void) => {
+  state = {
+    creators: state.creators.map((creator) => {
+      if (creator.id !== creatorId) {
+        return creator;
+      }
+      const copy = { ...creator };
+      updater(copy);
+      return copy;
+    }),
+  };
+  notify();
+};
+
+const listen = (listener: (snapshot: CreatorsState) => void) => {
+  listeners.add(listener);
+  listener(clone(state));
+  return () => listeners.delete(listener);
+};
+
+const subscribeCreator = async (creatorId: string) => {
+  updateCreator(creatorId, (creator) => {
+    if (!creator.isSubscribed) {
+      creator.isSubscribed = true;
+      creator.subscribers += 1;
+    }
+  });
+  await feed.unlockPostsByCreator(creatorId);
+};
+
+const tipCreator = async (creatorId: string, amount: number) => {
+  updateCreator(creatorId, (creator) => {
+    creator.totalTips += amount;
+  });
+};
+
+export const creators = {
+  listen,
+  getSnapshot: () => clone(state),
+  async subscribe(creatorId: string, price: number) {
+    void price;
+    await subscribeCreator(creatorId);
   },
-  {
-    id: 'creator-2',
-    name: 'Pioneer',
-    description: 'Contenido premium de lifestyle y creatividad colectiva.',
-    subscribers: 820,
-    subscriptionPrice: 8,
-    posts: 31,
-    categories: ['Lifestyle', 'Arte'],
-    tippingOptions: [2, 4, 8],
+  async tip(creatorId: string, amount: number) {
+    await tipCreator(creatorId, amount);
   },
-];
+  async getCreator(creatorId: string) {
+    return clone(state).creators.find((creator) => creator.id === creatorId);
+  },
+};
 
-async function withFallback<T>(request: () => Promise<T>, fallback: T) {
-  try {
-    return await request();
-  } catch (error) {
-    console.warn('Falling back to placeholder data for creators', error);
-    return fallback;
-  }
-}
+export const useCreatorsStore = () =>
+  useSyncExternalStore(creators.listen, creators.getSnapshot, creators.getSnapshot);
 
-export async function listCreators(): Promise<CreatorSummary[]> {
-  return withFallback(
-    async () => {
-      const response = await fetch(CREATORS_ENDPOINT, { cache: 'no-store' });
-      if (!response.ok) {
-        throw new Error('Failed to load creators');
-      }
-      const body = (await response.json()) as { creators: CreatorSummary[] };
-      return body.creators;
-    },
-    fallbackCreators,
-  );
-}
-
-export async function getCreator(id: string): Promise<CreatorProfile | null> {
-  return withFallback(
-    async () => {
-      const response = await fetch(`${CREATORS_ENDPOINT}/${id}`, {
-        cache: 'no-store',
-      });
-
-      if (response.status === 404) {
-        return null;
-      }
-
-      if (!response.ok) {
-        throw new Error('Failed to load creator');
-      }
-
-      const body = (await response.json()) as { creator: CreatorProfile };
-      return body.creator;
-    },
-    fallbackCreators.find((creator) => creator.id === id) ?? null,
-  );
-}
-
-export async function subscribe(
-  id: string,
-  price: number,
-): Promise<{ success: boolean }>{
-  return withFallback(
-    async () => {
-      const response = await fetch(`${CREATORS_ENDPOINT}/${id}/subscribe`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ price }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to subscribe');
-      }
-
-      return (await response.json()) as { success: boolean };
-    },
-    { success: true },
-  );
-}
-
-export async function tip(
-  id: string,
-  amount: number,
-): Promise<{ success: boolean }>{
-  return withFallback(
-    async () => {
-      const response = await fetch(`${CREATORS_ENDPOINT}/${id}/tip`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to send tip');
-      }
-
-      return (await response.json()) as { success: boolean };
-    },
-    { success: true },
-  );
-}
+export type CreatorsService = typeof creators;

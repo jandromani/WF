@@ -1,107 +1,146 @@
-export interface WalletBalance {
-  symbol: string;
-  amount: number;
-  fiatValue?: number;
-}
+'use client';
 
-export interface WalletActivityItem {
+type WalletActivityDirection = 'in' | 'out';
+
+export type WalletActivityType =
+  | 'daily_claim'
+  | 'subscription'
+  | 'tip'
+  | 'referral'
+  | 'unlock'
+  | 'buy_wfans'
+  | 'other';
+
+export interface WalletActivity {
   id: string;
-  type: 'claim' | 'tip' | 'subscribe' | 'buy';
-  description: string;
+  type: WalletActivityType;
   amount: number;
-  timestamp: string;
+  direction: WalletActivityDirection;
+  memo?: string;
+  reference?: string;
+  counterparty?: string;
+  timestamp: number;
+  description: string;
 }
 
-const WALLET_ENDPOINT = '/api/wallet';
+export interface WalletBalanceState {
+  wldy: number;
+  usdRate: number;
+}
 
-async function withFallback<T>(request: () => Promise<T>, fallback: T) {
-  try {
-    return await request();
-  } catch (error) {
-    console.warn('Falling back to wallet placeholder data', error);
-    return fallback;
+export interface WalletState {
+  balance: WalletBalanceState;
+  activities: WalletActivity[];
+  lastUpdated: number;
+}
+
+export interface WalletActivityInput {
+  type: WalletActivityType;
+  amount: number;
+  direction: WalletActivityDirection;
+  memo?: string;
+  reference?: string;
+  counterparty?: string;
+  description?: string;
+  timestamp?: number;
+}
+
+const listeners = new Set<(state: WalletState) => void>();
+
+const generateId = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
   }
-}
+  return Math.random().toString(36).slice(2);
+};
 
-export async function getBalance(): Promise<WalletBalance> {
-  return withFallback(
-    async () => {
-      const response = await fetch(`${WALLET_ENDPOINT}/balance`, {
-        cache: 'no-store',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch wallet balance');
-      }
-
-      return (await response.json()) as WalletBalance;
+const initialState: WalletState = {
+  balance: {
+    wldy: 1280,
+    usdRate: 1.25,
+  },
+  activities: [
+    {
+      id: generateId(),
+      type: 'daily_claim',
+      amount: 25,
+      direction: 'in',
+      memo: 'claim:daily',
+      description: 'Daily claim bonus',
+      timestamp: Date.now() - 1000 * 60 * 60 * 6,
     },
-    { symbol: 'WFANS', amount: 125.4, fiatValue: 24.8 },
-  );
-}
-
-export async function getActivity(): Promise<WalletActivityItem[]> {
-  return withFallback(
-    async () => {
-      const response = await fetch(`${WALLET_ENDPOINT}/activity`, {
-        cache: 'no-store',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch wallet activity');
-      }
-
-      return (await response.json()) as WalletActivityItem[];
+    {
+      id: generateId(),
+      type: 'referral',
+      amount: 50,
+      direction: 'in',
+      memo: 'referral:jenna',
+      description: 'Referral reward from @jenna',
+      timestamp: Date.now() - 1000 * 60 * 60 * 24,
     },
-    [
-      {
-        id: 'activity-1',
-        type: 'claim',
-        description: 'Daily claim',
-        amount: 5,
-        timestamp: new Date().toISOString(),
-      },
-      {
-        id: 'activity-2',
-        type: 'tip',
-        description: 'Tip to World Builder',
-        amount: -2,
-        timestamp: new Date(Date.now() - 7200 * 1000).toISOString(),
-      },
-    ],
-  );
-}
+  ],
+  lastUpdated: Date.now(),
+};
 
-export async function claimDaily(): Promise<{ success: boolean; amount: number }> {
-  return withFallback(
-    async () => {
-      const response = await fetch(`${WALLET_ENDPOINT}/claim`, {
-        method: 'POST',
-      });
+let state: WalletState = initialState;
 
-      if (!response.ok) {
-        throw new Error('Failed to claim daily rewards');
-      }
+const cloneState = (value: WalletState): WalletState => ({
+  balance: { ...value.balance },
+  activities: [...value.activities],
+  lastUpdated: value.lastUpdated,
+});
 
-      return (await response.json()) as { success: boolean; amount: number };
+const notify = () => {
+  listeners.forEach((listener) => listener(cloneState(state)));
+};
+
+const applyActivity = (activity: WalletActivityInput): WalletActivity => {
+  const delta = activity.direction === 'out' ? -activity.amount : activity.amount;
+  const timestamp = activity.timestamp ?? Date.now();
+  const entry: WalletActivity = {
+    id: activity.reference ?? generateId(),
+    description: activity.description ?? activity.memo ?? 'Wallet activity',
+    ...activity,
+    timestamp,
+  };
+
+  state = {
+    balance: {
+      ...state.balance,
+      wldy: Math.max(0, parseFloat((state.balance.wldy + delta).toFixed(4))),
     },
-    { success: true, amount: 5 },
-  );
-}
+    activities: [entry, ...state.activities].sort(
+      (a, b) => b.timestamp - a.timestamp,
+    ),
+    lastUpdated: timestamp,
+  };
 
-export async function buyWFANS(): Promise<{ success: boolean }> {
-  return withFallback(
-    async () => {
-      const response = await fetch(`${WALLET_ENDPOINT}/buy`, {
-        method: 'POST',
-      });
+  notify();
+  return entry;
+};
 
-      if (!response.ok) {
-        throw new Error('Failed to start purchase');
-      }
+export const walletService = {
+  subscribe(listener: (snapshot: WalletState) => void) {
+    listeners.add(listener);
+    listener(cloneState(state));
+    return () => {
+      listeners.delete(listener);
+    };
+  },
+  getSnapshot: () => cloneState(state),
+  async recordActivity(activity: WalletActivityInput) {
+    return applyActivity(activity);
+  },
+  async adjustBalance(delta: number, memo = 'balance:adjustment') {
+    const description = delta >= 0 ? 'Balance adjustment' : 'Balance deduction';
+    return applyActivity({
+      type: 'other',
+      amount: Math.abs(delta),
+      direction: delta >= 0 ? 'in' : 'out',
+      memo,
+      description,
+    });
+  },
+};
 
-      return (await response.json()) as { success: boolean };
-    },
-    { success: true },
-  );
-}
+export type WalletService = typeof walletService;

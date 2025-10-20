@@ -1,111 +1,94 @@
+'use client';
+
 export interface Post {
   id: string;
-  authorId: string;
-  authorName: string;
-  avatarUrl?: string;
-  content: string;
+  creatorId: string;
+  title: string;
+  summary: string;
+  price: number;
   isLocked: boolean;
-  createdAt: string;
-  tipsTotal: number;
-  unlocked?: boolean;
+  publishedAt: number;
+  coverImage?: string;
 }
 
-export interface CreatePostInput {
-  content: string;
-  isLocked?: boolean;
+interface FeedState {
+  posts: Post[];
 }
 
-const FEED_ENDPOINT = '/api/feed';
+const listeners = new Set<(state: FeedState) => void>();
 
-const withFallback = async <T>(request: () => Promise<T>, fallback: T) => {
-  try {
-    return await request();
-  } catch (error) {
-    console.warn('Falling back to placeholder data for', FEED_ENDPOINT, error);
-    return fallback;
-  }
-};
+const now = Date.now();
 
-export async function listPosts(): Promise<Post[]> {
-  return withFallback(
-    async () => {
-      const response = await fetch(FEED_ENDPOINT, { cache: 'no-store' });
-      if (!response.ok) {
-        throw new Error('Failed to fetch feed');
-      }
-      const body = (await response.json()) as { posts: Post[] };
-      return body.posts;
-    },
-    [
-      {
-        id: 'placeholder-1',
-        authorId: 'creator-1',
-        authorName: 'World Builder',
-        content:
-          'Bienvenido a WorldFans: comparte contenido exclusivo y recompensa a tus fans.',
-        isLocked: false,
-        createdAt: new Date().toISOString(),
-        tipsTotal: 42,
-        unlocked: true,
-      },
-      {
-        id: 'placeholder-2',
-        authorId: 'creator-2',
-        authorName: 'Pioneer',
-        content:
-          'Desbloquea este post premium para ver el detrás de cámaras de la última sesión.',
-        isLocked: true,
-        createdAt: new Date(Date.now() - 3600 * 1000).toISOString(),
-        tipsTotal: 12,
-        unlocked: false,
-      },
-    ],
-  );
-}
-
-export async function createPost(input: CreatePostInput): Promise<Post> {
-  return withFallback(
-    async () => {
-      const response = await fetch(FEED_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create post');
-      }
-
-      const body = (await response.json()) as { post: Post };
-      return body.post;
+const initialState: FeedState = {
+  posts: [
+    {
+      id: 'post-1',
+      creatorId: 'alex',
+      title: 'World Chain deep dive drop',
+      summary: 'Unlock the full set of renders from my latest World Chain concept art.',
+      price: 4,
+      isLocked: true,
+      publishedAt: now - 1000 * 60 * 45,
     },
     {
-      id: `local-${Date.now()}`,
-      authorId: 'you',
-      authorName: 'Tú',
-      content: input.content,
-      isLocked: Boolean(input.isLocked),
-      createdAt: new Date().toISOString(),
-      tipsTotal: 0,
-      unlocked: true,
+      id: 'post-2',
+      creatorId: 'zara',
+      title: 'Studio session: unreleased track',
+      summary: 'Hear the raw cut of my upcoming single before anyone else.',
+      price: 3,
+      isLocked: false,
+      publishedAt: now - 1000 * 60 * 120,
     },
-  );
-}
+  ],
+};
 
-export async function unlockPost(postId: string): Promise<{ success: boolean }>
-{
-  return withFallback(
-    async () => {
-      const response = await fetch(`${FEED_ENDPOINT}/${postId}/unlock`, {
-        method: 'POST',
-      });
+let state: FeedState = initialState;
 
-      if (!response.ok) {
-        throw new Error('Failed to unlock post');
+const clone = (value: FeedState): FeedState => ({
+  posts: value.posts.map((post) => ({ ...post })),
+});
+
+const notify = () => {
+  listeners.forEach((listener) => listener(clone(state)));
+};
+
+const updatePost = (postId: string, updater: (post: Post) => void) => {
+  state = {
+    posts: state.posts.map((post) => {
+      if (post.id !== postId) {
+        return post;
       }
+      const copy = { ...post };
+      updater(copy);
+      return copy;
+    }),
+  };
+  notify();
+};
 
-      return (await response.json()) as { success: boolean };
-    },
-    { success: true },
-  );
-}
+const api = {
+  subscribe(listener: (snapshot: FeedState) => void) {
+    listeners.add(listener);
+    listener(clone(state));
+    return () => listeners.delete(listener);
+  },
+  getSnapshot: () => clone(state),
+  async unlockPost(postId: string) {
+    updatePost(postId, (post) => {
+      post.isLocked = false;
+    });
+  },
+  async unlockPostsByCreator(creatorId: string) {
+    state = {
+      posts: state.posts.map((post) =>
+        post.creatorId === creatorId ? { ...post, isLocked: false } : post,
+      ),
+    };
+    notify();
+  },
+};
+
+export const feedService = api;
+export const feed = api;
+
+export type FeedService = typeof feedService;

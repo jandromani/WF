@@ -1,4 +1,12 @@
-'use client';
+import { auth } from '@/auth';
+import { CreatorShowcase } from '@/components/Creators';
+import { FeedList } from '@/components/Feed/FeedList';
+import { Page } from '@/components/PageLayout';
+import { Transaction } from '@/components/Transaction';
+import { UserInfo } from '@/components/UserInfo';
+import { Verify } from '@/components/Verify';
+import { ViewPermissions } from '@/components/ViewPermissions';
+import { Marble, TopBar } from '@worldcoin/mini-apps-ui-kit-react';
 
 import { useEffect } from 'react';
 
@@ -21,11 +29,28 @@ export default function HomePage() {
   }, [router, worldIdVerified]);
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-semibold text-gray-900">Tu panel</h1>
-      <BalanceCard balance={balance} isLoading={isLoading} />
-      <ClaimCard disabled={!worldIdVerified} onClaim={claim} />
-      <ActivityList items={activity} isLoading={isLoading} />
-    </div>
+    <>
+      <Page.Header className="p-0">
+        <TopBar
+          title="Home"
+          endAdornment={
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold capitalize">
+                {session?.user.username}
+              </p>
+              <Marble src={session?.user.profilePictureUrl} className="w-12" />
+            </div>
+          }
+        />
+      </Page.Header>
+      <Page.Main className="mb-16 flex flex-col items-center justify-start gap-6">
+        <UserInfo />
+        <Verify />
+        <CreatorShowcase />
+        <FeedList />
+        <Transaction />
+        <ViewPermissions />
+      </Page.Main>
+    </>
   );
 }

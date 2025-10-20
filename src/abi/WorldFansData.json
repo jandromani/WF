@@ -1,0 +1,28 @@
+{
+  "abi": [
+    {
+      "inputs": [],
+      "name": "currentEpoch",
+      "outputs": [
+        { "internalType": "uint256", "name": "epochNumber", "type": "uint256" },
+        { "internalType": "uint256", "name": "emissionRate", "type": "uint256" }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "nextHalvingBlock",
+      "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "circulatingSupply",
+      "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ]
+}
