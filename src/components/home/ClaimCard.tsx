@@ -24,7 +24,9 @@ export function ClaimCard({ disabled, onClaim }: ClaimCardProps) {
         showToast('No se pudo reclamar la recompensa', 'error');
       }
     } catch (error) {
-      console.error(error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error(error);
+      }
       showToast('Error al reclamar la recompensa', 'error');
     } finally {
       setLoading(false);

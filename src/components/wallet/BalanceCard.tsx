@@ -1,3 +1,5 @@
+import { memo } from 'react';
+
 import { WalletBalance } from '@/services/wallet';
 
 interface BalanceCardProps {
@@ -5,7 +7,7 @@ interface BalanceCardProps {
   isLoading?: boolean;
 }
 
-export function BalanceCard({ balance, isLoading }: BalanceCardProps) {
+const BalanceCardComponent = ({ balance, isLoading }: BalanceCardProps) => {
   return (
     <section className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-black p-6 text-white shadow-lg">
       <p className="text-sm uppercase tracking-widest text-white/70">Saldo disponible</p>
@@ -26,4 +28,7 @@ export function BalanceCard({ balance, isLoading }: BalanceCardProps) {
       </div>
     </section>
   );
-}
+};
+
+export const BalanceCard = memo(BalanceCardComponent);
+BalanceCard.displayName = 'BalanceCard';

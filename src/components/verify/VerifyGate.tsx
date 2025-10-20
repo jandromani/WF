@@ -5,6 +5,7 @@ import { VerificationLevel } from '@worldcoin/minikit-js';
 import { useState } from 'react';
 
 import { verify } from '@/lib/minikit';
+import { useAuthStore } from '@/lib/stores/auth';
 import { postProof } from '@/lib/worldid';
 
 export const VerifyGate = () => {
@@ -33,12 +34,15 @@ export const VerifyGate = () => {
       });
 
       if (response?.verifyRes?.success) {
+        setWorldIdVerified(true);
         setButtonState('success');
       } else {
         throw new Error('Verification rejected');
       }
     } catch (error) {
-      console.error('Verification error', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Verification error', error);
+      }
       setButtonState('failed');
       setTimeout(() => {
         setButtonState(undefined);

@@ -1,10 +1,12 @@
+import { memo } from 'react';
+
 import { CreatorProfile } from '@/services/creators';
 
 interface CreatorHeaderProps {
   creator: CreatorProfile;
 }
 
-export function CreatorHeader({ creator }: CreatorHeaderProps) {
+const CreatorHeaderComponent = ({ creator }: CreatorHeaderProps) => {
   return (
     <header className="flex flex-col items-start gap-4 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-500 p-6 text-white">
       <div className="flex items-center gap-4">
@@ -42,4 +44,7 @@ export function CreatorHeader({ creator }: CreatorHeaderProps) {
       ) : null}
     </header>
   );
-}
+};
+
+export const CreatorHeader = memo(CreatorHeaderComponent);
+CreatorHeader.displayName = 'CreatorHeader';

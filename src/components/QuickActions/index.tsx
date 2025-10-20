@@ -24,7 +24,9 @@ const shareDeepLink = async (url: string, title: string) => {
       await navigator.clipboard.writeText(url);
     }
   } catch (error) {
-    console.warn('Failed to share deep link', error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('Failed to share deep link', error);
+    }
   }
 };
 

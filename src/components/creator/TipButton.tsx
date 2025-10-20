@@ -35,7 +35,9 @@ export function TipButton({ amount, onTip }: TipButtonProps) {
             showToast('No se pudo enviar el tip', 'error');
           }
         } catch (error) {
-          console.error(error);
+          if (process.env.NODE_ENV !== 'production') {
+            console.error(error);
+          }
           showToast('Error al enviar el tip', 'error');
         } finally {
           setLoading(false);

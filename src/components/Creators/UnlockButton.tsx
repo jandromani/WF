@@ -22,7 +22,9 @@ export const UnlockButton = ({ post }: Props) => {
       setStatus('success');
       setTimeout(() => setStatus('idle'), 2500);
     } catch (error) {
-      console.error('Unlock failed', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Unlock failed', error);
+      }
       setStatus('error');
       setTimeout(() => setStatus('idle'), 3500);
     }

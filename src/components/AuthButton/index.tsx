@@ -21,7 +21,9 @@ export const AuthButton = () => {
     try {
       await walletAuth();
     } catch (error) {
-      console.error('Wallet authentication button error', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Wallet authentication button error', error);
+      }
       setIsPending(false);
       return;
     }
@@ -36,7 +38,9 @@ export const AuthButton = () => {
         try {
           await walletAuth();
         } catch (error) {
-          console.error('Auto wallet authentication error', error);
+          if (process.env.NODE_ENV !== 'production') {
+            console.error('Auto wallet authentication error', error);
+          }
         } finally {
           setIsPending(false);
         }

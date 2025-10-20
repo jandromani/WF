@@ -21,7 +21,9 @@ export const BuyWFANSButton = () => {
       setStatus('success');
       resetLater();
     } catch (error) {
-      console.error('Failed to buy WFANS', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to buy WFANS', error);
+      }
       setStatus('error');
       resetLater();
     }

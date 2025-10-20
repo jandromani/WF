@@ -42,7 +42,9 @@ export const Pay = () => {
         }
       }
     } catch (error) {
-      console.warn('MiniKit pay command unavailable', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('MiniKit pay command unavailable', error);
+      }
     }
   };
 
@@ -92,7 +94,9 @@ export const Pay = () => {
         throw new Error('Payment rejected');
       }
     } catch (error) {
-      console.error('Payment error', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Payment error', error);
+      }
       setButtonState('failed');
       setTimeout(() => {
         setButtonState(undefined);

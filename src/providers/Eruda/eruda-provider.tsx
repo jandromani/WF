@@ -9,7 +9,9 @@ export const Eruda = (props: { children: ReactNode }) => {
       try {
         eruda.init();
       } catch (error) {
-        console.log('Eruda failed to initialize', error);
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('Eruda failed to initialize', error);
+        }
       }
     }
   }, []);

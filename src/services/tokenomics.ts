@@ -41,7 +41,9 @@ async function readContractSafe<T>(fn: () => Promise<T>, fallback: T) {
   try {
     return await fn();
   } catch (error) {
-    console.warn('[tokenomics] fallback read', error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[tokenomics] fallback read', error);
+    }
     return fallback;
   }
 }

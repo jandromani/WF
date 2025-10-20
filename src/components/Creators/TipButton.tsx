@@ -23,7 +23,9 @@ export const TipButton = ({ creatorId, options }: Props) => {
       setStatus('success');
       setTimeout(() => setStatus('idle'), 2500);
     } catch (error) {
-      console.error('Tip failed', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Tip failed', error);
+      }
       setStatus('error');
       setTimeout(() => setStatus('idle'), 3500);
     }

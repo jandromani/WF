@@ -23,7 +23,9 @@ export const SubscribeButton = ({ creatorId, price, disabled }: Props) => {
       setStatus('success');
       setTimeout(() => setStatus('idle'), 3000);
     } catch (error) {
-      console.error('Subscription failed', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Subscription failed', error);
+      }
       setStatus('error');
       setTimeout(() => setStatus('idle'), 4000);
     }

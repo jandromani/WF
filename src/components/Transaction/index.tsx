@@ -44,7 +44,9 @@ export const Transaction = () => {
       setButtonState('success');
       setTimeout(() => setButtonState(undefined), 3000);
     } else if (isError) {
-      console.error('Transaction failed:', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Transaction failed:', error);
+      }
       setButtonState('failed');
       setTimeout(() => setButtonState(undefined), 3000);
     }
@@ -52,7 +54,9 @@ export const Transaction = () => {
 
   const onClickGetToken = async () => {
     if (!APP_ID) {
-      console.error('Missing NEXT_PUBLIC_APP_ID for transactions');
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Missing NEXT_PUBLIC_APP_ID for transactions');
+      }
       return;
     }
 
@@ -78,7 +82,9 @@ export const Transaction = () => {
         throw new Error('Transaction submission failed');
       }
     } catch (err) {
-      console.error('Error sending transaction:', err);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Error sending transaction:', err);
+      }
       setButtonState('failed');
       setTimeout(() => setButtonState(undefined), 3000);
     }
@@ -86,7 +92,9 @@ export const Transaction = () => {
 
   const onClickUsePermit2 = async () => {
     if (!APP_ID) {
-      console.error('Missing NEXT_PUBLIC_APP_ID for transactions');
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Missing NEXT_PUBLIC_APP_ID for transactions');
+      }
       return;
     }
 
@@ -140,7 +148,9 @@ export const Transaction = () => {
         throw new Error('Transaction submission failed');
       }
     } catch (err) {
-      console.error('Error sending transaction:', err);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Error sending transaction:', err);
+      }
       setButtonState('failed');
       setTimeout(() => setButtonState(undefined), 3000);
     }

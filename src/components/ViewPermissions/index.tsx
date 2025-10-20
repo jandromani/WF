@@ -19,7 +19,9 @@ export const ViewPermissions = () => {
             setPermissions(permissionsResult?.finalPayload.permissions || {});
           }
         } catch (error) {
-          console.error('Failed to fetch permissions:', error);
+          if (process.env.NODE_ENV !== 'production') {
+            console.error('Failed to fetch permissions:', error);
+          }
         }
       }
     };

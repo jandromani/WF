@@ -27,7 +27,9 @@ export function UnlockButton({ postId, onUnlock }: UnlockButtonProps) {
       await onUnlock(postId);
       showToast('Contenido desbloqueado', 'success');
     } catch (error) {
-      console.error(error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error(error);
+      }
       showToast('No se pudo desbloquear el contenido', 'error');
     } finally {
       setLoading(false);

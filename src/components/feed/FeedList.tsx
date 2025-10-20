@@ -32,13 +32,7 @@ export function FeedList({ posts, isLoading, onUnlock }: FeedListProps) {
   return (
     <div className="space-y-4">
       {posts.map((post) => (
-          <PostCard
-            key={post.id}
-            post={post}
-            onUnlock={async (id) => {
-              await onUnlock(id);
-            }}
-          />
+        <PostCard key={post.id} post={post} onUnlock={onUnlock} />
       ))}
     </div>
   );

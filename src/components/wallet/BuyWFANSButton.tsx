@@ -25,7 +25,9 @@ export function BuyWFANSButton({ disabled }: BuyWFANSButtonProps) {
         showToast('No se pudo iniciar la compra', 'error');
       }
     } catch (error) {
-      console.error(error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error(error);
+      }
       showToast('Error al iniciar la compra', 'error');
     } finally {
       setLoading(false);
