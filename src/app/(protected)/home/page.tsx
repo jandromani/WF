@@ -1,6 +1,7 @@
 import { auth } from '@/auth';
+import { CreatorShowcase } from '@/components/Creators';
+import { FeedList } from '@/components/Feed/FeedList';
 import { Page } from '@/components/PageLayout';
-import { Pay } from '@/components/Pay';
 import { Transaction } from '@/components/Transaction';
 import { UserInfo } from '@/components/UserInfo';
 import { Verify } from '@/components/Verify';
@@ -25,10 +26,11 @@ export default async function Home() {
           }
         />
       </Page.Header>
-      <Page.Main className="flex flex-col items-center justify-start gap-4 mb-16">
+      <Page.Main className="mb-16 flex flex-col items-center justify-start gap-6">
         <UserInfo />
         <Verify />
-        <Pay />
+        <CreatorShowcase />
+        <FeedList />
         <Transaction />
         <ViewPermissions />
       </Page.Main>

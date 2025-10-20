@@ -1,0 +1,38 @@
+{
+  "abi": [
+    {
+      "inputs": [
+        { "internalType": "uint256", "name": "amount", "type": "uint256" }
+      ],
+      "name": "quoteSubscription",
+      "outputs": [
+        { "internalType": "uint256", "name": "creatorShare", "type": "uint256" },
+        { "internalType": "uint256", "name": "treasuryShare", "type": "uint256" }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        { "internalType": "uint256", "name": "amount", "type": "uint256" }
+      ],
+      "name": "quoteTip",
+      "outputs": [
+        { "internalType": "uint256", "name": "creatorShare", "type": "uint256" },
+        { "internalType": "uint256", "name": "treasuryShare", "type": "uint256" }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "distribution",
+      "outputs": [
+        { "internalType": "uint16", "name": "creator", "type": "uint16" },
+        { "internalType": "uint16", "name": "treasury", "type": "uint16" }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ]
+}
