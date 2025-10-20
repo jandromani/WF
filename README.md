@@ -6,15 +6,14 @@ This template is a way for you to quickly get started with authentication and ex
 
 ## Getting Started
 
-1. cp .env.example .env.local
-2. Follow the instructions in the .env.local file
-3. Run `npm run dev`
-4. Run `ngrok http 3000`
-5. Run `npx auth secret` to update the `AUTH_SECRET` in the .env.local file
-6. Add your domain to the `allowedDevOrigins` in the next.config.ts file.
-7. [For Testing] If you're using a proxy like ngrok, you need to update the `AUTH_URL` in the .env.local file to your ngrok url.
-8. Continue to developer.worldcoin.org and make sure your app is connected to the right ngrok url
-9. [Optional] For Verify and Send Transaction to work you need to do some more setup in the dev portal. The steps are outlined in the respective component files.
+1. `cp .env.example .env.local`
+2. Rellena las variables siguiendo los comentarios del archivo:
+   - `NEXT_PUBLIC_APP_ID`, `WLD_CLIENT_ID` y credenciales de World App.
+   - Ajusta `NEXTAUTH_SECRET` con `npx auth secret`.
+   - Configura `NEXTAUTH_URL`/`AUTH_URL` cuando uses un túnel como ngrok.
+3. Ejecuta `yarn dev --hostname 127.0.0.1 --port 3000` para arrancar la mini-app en local.
+4. Añade tu dominio público en `next.config.ts` (`allowedDevOrigins`) cuando pruebas contra dispositivos reales.
+5. Para apuntar a World Chain mainnet actualiza los endpoints de RPC, IDs de app y contratos en tus servicios/API antes de desplegar.
 
 ## Authentication
 
@@ -27,6 +26,19 @@ This starter kit uses [Mini Apps UI Kit](https://github.com/worldcoin/mini-apps-
 ## Eruda
 
 [Eruda](https://github.com/liriliri/eruda) is a tool that allows you to inspect the console while building as a mini app. You should disable this in production.
+
+## Testing & Quality
+
+- Instala los navegadores de Playwright una vez con `npx playwright install`.
+- Ejecuta el smoke test suite en modo headless con `yarn test:e2e`.
+
+Los flujos cubiertos incluyen verificación World ID, reclamaciones y pagos (tip & subscribe).
+
+## Building for Production
+
+- Ejecuta `yarn build` para generar el artefacto optimizado.
+- Asegúrate de que `yarn lint` y `yarn test:e2e` pasen antes de desplegar.
+- La configuración de CSP está definida en `next.config.ts` y puede ampliarse según tu backend.
 
 ## Contributing
 

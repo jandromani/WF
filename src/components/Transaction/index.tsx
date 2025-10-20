@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import TestContractABI from '@/abi/TestContract.json';
 import { Button, LiveFeedback } from '@worldcoin/mini-apps-ui-kit-react';

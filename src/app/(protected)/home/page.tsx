@@ -1,10 +1,15 @@
 import { auth } from '@/auth';
 import { Page } from '@/components/PageLayout';
 import { Pay } from '@/components/Pay';
-import { Transaction } from '@/components/Transaction';
 import { UserInfo } from '@/components/UserInfo';
 import { Verify } from '@/components/Verify';
 import { ViewPermissions } from '@/components/ViewPermissions';
+import { ClaimCard } from '@/components/ClaimCard';
+import { Feed } from '@/components/Feed';
+import { NotificationCenter } from '@/components/NotificationCenter';
+import { QuickActions } from '@/components/QuickActions';
+import { VerificationGate } from '@/components/VerificationGate';
+import { WalletSummary } from '@/components/WalletSummary';
 import { Marble, TopBar } from '@worldcoin/mini-apps-ui-kit-react';
 
 export default async function Home() {
@@ -25,11 +30,16 @@ export default async function Home() {
           }
         />
       </Page.Header>
-      <Page.Main className="flex flex-col items-center justify-start gap-4 mb-16">
+      <Page.Main className="relative flex flex-col items-center justify-start gap-4 mb-16">
+        <VerificationGate />
+        <NotificationCenter />
         <UserInfo />
         <Verify />
+        <ClaimCard />
+        <WalletSummary />
         <Pay />
-        <Transaction />
+        <QuickActions />
+        <Feed />
         <ViewPermissions />
       </Page.Main>
     </>
