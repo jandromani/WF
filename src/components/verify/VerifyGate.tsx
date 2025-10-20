@@ -1,19 +1,16 @@
 'use client';
+
 import { Button, LiveFeedback } from '@worldcoin/mini-apps-ui-kit-react';
-import { MiniKit, VerificationLevel } from '@worldcoin/minikit-js';
+import { VerificationLevel } from '@worldcoin/minikit-js';
 import { useState } from 'react';
 
-/**
- * This component is an example of how to use World ID in Mini Apps
- * Minikit commands must be used on client components
- * It's critical you verify the proof on the server side
- * Read More: https://docs.world.org/mini-apps/commands/verify#verifying-the-proof
- */
-export const Verify = () => {
+import { verify } from '@/lib/minikit';
+import { postProof } from '@/lib/worldid';
+
+export const VerifyGate = () => {
   const [buttonState, setButtonState] = useState<
     'pending' | 'success' | 'failed' | undefined
   >(undefined);
-
   const [whichVerification, setWhichVerification] = useState<VerificationLevel>(
     VerificationLevel.Device,
   );
@@ -21,29 +18,26 @@ export const Verify = () => {
   const onClickVerify = async (verificationLevel: VerificationLevel) => {
     setButtonState('pending');
     setWhichVerification(verificationLevel);
-    const result = await MiniKit.commandsAsync.verify({
-      action: 'test-action', // Make sure to create this in the developer portal -> incognito actions
-      verification_level: verificationLevel,
-    });
-    console.log(result.finalPayload);
-    // Verify the proof
-    const response = await fetch('/api/verify-proof', {
-      method: 'POST',
-      body: JSON.stringify({
+
+    try {
+      const result = await verify({
+        action: 'test-action',
+        verification_level: verificationLevel,
+      });
+
+      const response = await postProof({
         payload: result.finalPayload,
         action: 'test-action',
-      }),
-    });
+      });
 
-    const data = await response.json();
-    if (data.verifyRes.success) {
-      setButtonState('success');
-      // Normally you'd do something here since the user is verified
-      // Here we'll just do nothing
-    } else {
+      if (response?.verifyRes?.success) {
+        setButtonState('success');
+      } else {
+        throw new Error('Verification rejected');
+      }
+    } catch (error) {
+      console.error('Verification error', error);
       setButtonState('failed');
-
-      // Reset the button state after 3 seconds
       setTimeout(() => {
         setButtonState(undefined);
       }, 2000);
@@ -60,9 +54,7 @@ export const Verify = () => {
           success: 'Verified',
         }}
         state={
-          whichVerification === VerificationLevel.Device
-            ? buttonState
-            : undefined
+          whichVerification === VerificationLevel.Device ? buttonState : undefined
         }
         className="w-full"
       >
