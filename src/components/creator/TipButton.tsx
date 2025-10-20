@@ -1,0 +1,63 @@
+'use client';
+
+import { useState } from 'react';
+
+import { Button } from '@/components/common/Button';
+import { Confirm } from '@/components/common/Confirm';
+import { useToast } from '@/components/common/Toast';
+import { useAuthStore } from '@/lib/stores/auth';
+
+interface TipButtonProps {
+  amount: number;
+  onTip: (amount: number) => Promise<{ success: boolean }>;
+}
+
+export function TipButton({ amount, onTip }: TipButtonProps) {
+  const [loading, setLoading] = useState(false);
+  const { worldIdVerified } = useAuthStore();
+  const { showToast } = useToast();
+
+  return (
+    <Confirm
+      title={`Enviar tip de ${amount} WFANS`}
+      description="Confirmaremos la transacción en World App."
+      onConfirm={async () => {
+        if (!worldIdVerified) {
+          showToast('Verifica tu World ID para enviar tips', 'info');
+          return;
+        }
+        setLoading(true);
+        try {
+          const result = await onTip(amount);
+          if (result.success) {
+            showToast('Tip enviado', 'success');
+          } else {
+            showToast('No se pudo enviar el tip', 'error');
+          }
+        } catch (error) {
+          console.error(error);
+          showToast('Error al enviar el tip', 'error');
+        } finally {
+          setLoading(false);
+        }
+      }}
+      trigger={({ open }) => (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            if (!worldIdVerified) {
+              showToast('Verifica tu World ID para enviar tips', 'info');
+              return;
+            }
+            open();
+          }}
+          loading={loading}
+          disabled={!worldIdVerified}
+        >
+          {amount} WFANS
+        </Button>
+      )}
+    />
+  );
+}
