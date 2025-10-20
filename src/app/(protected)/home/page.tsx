@@ -4,7 +4,7 @@ import { FeedList } from '@/components/Feed/FeedList';
 import { Page } from '@/components/PageLayout';
 import { Pay } from '@/components/Pay';
 import { UserInfo } from '@/components/UserInfo';
-import { Verify } from '@/components/Verify';
+import { VerifyGate } from '@/components/verify/VerifyGate';
 import { ViewPermissions } from '@/components/ViewPermissions';
 import { ClaimCard } from '@/components/ClaimCard';
 import { Feed } from '@/components/Feed';
@@ -53,9 +53,7 @@ export default function HomePage() {
         <VerificationGate />
         <NotificationCenter />
         <UserInfo />
-        <Verify />
-        <ClaimCard />
-        <WalletSummary />
+        <VerifyGate />
         <Pay />
         <QuickActions />
         <Feed />

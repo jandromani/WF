@@ -1,15 +1,11 @@
 'use client';
+
 import { Button, LiveFeedback } from '@worldcoin/mini-apps-ui-kit-react';
-import { MiniKit, Tokens, tokenToDecimals } from '@worldcoin/minikit-js';
+import { Tokens, tokenToDecimals } from '@worldcoin/minikit-js';
 import { useState } from 'react';
 
-import { useWalletStore } from '@/store/useWalletStore';
+import { getUserWalletByUsername, pay } from '@/lib/minikit';
 
-/**
- * This component is used to pay a user
- * The payment command simply does an ERC20 transfer
- * But, it also includes a reference field that you can search for on-chain
- */
 export const Pay = () => {
   const [buttonState, setButtonState] = useState<
     'pending' | 'success' | 'failed' | undefined
@@ -59,17 +55,49 @@ export const Pay = () => {
       return;
     }
 
+  const onClickPay = async () => {
     setButtonState('pending');
     setActiveAction(kind);
 
     try {
-      await executePayCommand(amount, label);
-      applyMovement({ kind, title: label, amount: -amount });
-      setButtonState('success');
+      const response = await fetch('/api/initiate-payment', {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        throw new Error('Unable to initialise payment');
+      }
+      const { id } = (await response.json()) as { id: string };
+
+      const address = await getUserWalletByUsername('alex');
+
+      const result = await pay({
+        reference: id,
+        to: address ?? '0x0000000000000000000000000000000000000000',
+        tokens: [
+          {
+            symbol: Tokens.WLD,
+            token_amount: tokenToDecimals(0.5, Tokens.WLD).toString(),
+          },
+          {
+            symbol: Tokens.USDC,
+            token_amount: tokenToDecimals(0.1, Tokens.USDC).toString(),
+          },
+        ],
+        description: 'Test example payment for minikit',
+      });
+
+      if (result.finalPayload.status === 'success') {
+        setButtonState('success');
+      } else {
+        throw new Error('Payment rejected');
+      }
     } catch (error) {
-      console.error('Payment failed', error);
+      console.error('Payment error', error);
       setButtonState('failed');
-      setTimeout(() => setButtonState(undefined), 3000);
+      setTimeout(() => {
+        setButtonState(undefined);
+      }, 3000);
+      return;
     }
   };
 

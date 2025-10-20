@@ -1,26 +1,25 @@
 'use client';
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import TestContractABI from '@/abi/TestContract.json';
 import { Button, LiveFeedback } from '@worldcoin/mini-apps-ui-kit-react';
-import { MiniKit } from '@worldcoin/minikit-js';
 import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react';
-import { useEffect, useState } from 'react';
-import { createPublicClient, http } from 'viem';
-import { worldchain } from 'viem/chains';
+import { useEffect, useMemo, useState } from 'react';
 
-/**
- * This component is used to get a token from a contract
- * For this to work you need to add the contract address to both contract entrypoints and permit2 tokens
- * inside of  Dev Portal > Configuration > Advanced
- * The general design pattern here is
- * 1. Trigger the transaction
- * 2. Update the transaction_id from the response to poll completion
- * 3. Wait in a useEffect for the transaction to complete
- */
+import { sendTransaction, getUserWalletByUsername } from '@/lib/minikit';
+import { publicClient } from '@/lib/viem';
+import { getContractConfig } from '@/lib/worldfans-contracts';
+
+const APP_ID = process.env.NEXT_PUBLIC_APP_ID as `app_${string}` | undefined;
+
 export const Transaction = () => {
-  // See the code for this contract here: https://worldscan.org/address/0xF0882554ee924278806d708396F1a7975b732522#code
-  const myContractToken = '0xF0882554ee924278806d708396F1a7975b732522';
+  const { address: payContractAddress, abi: payAbi } = useMemo(
+    () => getContractConfig('pay'),
+    [],
+  );
+  const appConfig = useMemo(
+    () => ({ app_id: (APP_ID ?? 'app_placeholder') as `app_${string}` }),
+    [],
+  );
   const [buttonState, setButtonState] = useState<
     'pending' | 'success' | 'failed' | undefined
   >(undefined);
@@ -28,58 +27,45 @@ export const Transaction = () => {
     'getToken',
   );
 
-  // This triggers the useWaitForTransactionReceipt hook when updated
   const [transactionId, setTransactionId] = useState<string>('');
 
-  // Feel free to use your own RPC provider for better performance
-  const client = createPublicClient({
-    chain: worldchain,
-    transport: http('https://worldchain-mainnet.g.alchemy.com/public'),
-  });
-
-  const {
-    isLoading: isConfirming,
-    isSuccess: isConfirmed,
-    isError,
-    error,
-  } = useWaitForTransactionReceipt({
-    client: client,
-    appConfig: {
-      app_id: process.env.WLD_CLIENT_ID as `app_${string}`,
-    },
-    transactionId: transactionId,
+  const { isLoading, isSuccess, isError, error } = useWaitForTransactionReceipt({
+    client: publicClient,
+    appConfig,
+    transactionId,
   });
 
   useEffect(() => {
-    if (transactionId && !isConfirming) {
-      if (isConfirmed) {
-        console.log('Transaction confirmed!');
-        setButtonState('success');
-        setTimeout(() => {
-          setButtonState(undefined);
-        }, 3000);
-      } else if (isError) {
-        console.error('Transaction failed:', error);
-        setButtonState('failed');
-        setTimeout(() => {
-          setButtonState(undefined);
-        }, 3000);
-      }
+    if (!transactionId || isLoading) {
+      return;
     }
-  }, [isConfirmed, isConfirming, isError, error, transactionId]);
 
-  // This is a basic transaction call to mint a token
+    if (isSuccess) {
+      setButtonState('success');
+      setTimeout(() => setButtonState(undefined), 3000);
+    } else if (isError) {
+      console.error('Transaction failed:', error);
+      setButtonState('failed');
+      setTimeout(() => setButtonState(undefined), 3000);
+    }
+  }, [error, isError, isLoading, isSuccess, transactionId]);
+
   const onClickGetToken = async () => {
+    if (!APP_ID) {
+      console.error('Missing NEXT_PUBLIC_APP_ID for transactions');
+      return;
+    }
+
     setTransactionId('');
     setWhichButton('getToken');
     setButtonState('pending');
 
     try {
-      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+      const { finalPayload } = await sendTransaction({
         transaction: [
           {
-            address: myContractToken,
-            abi: TestContractABI,
+            address: payContractAddress,
+            abi: payAbi,
             functionName: 'mintToken',
             args: [],
           },
@@ -87,67 +73,55 @@ export const Transaction = () => {
       });
 
       if (finalPayload.status === 'success') {
-        console.log(
-          'Transaction submitted, waiting for confirmation:',
-          finalPayload.transaction_id,
-        );
         setTransactionId(finalPayload.transaction_id);
       } else {
-        console.error('Transaction submission failed:', finalPayload);
-        setButtonState('failed');
-        setTimeout(() => {
-          setButtonState(undefined);
-        }, 3000);
+        throw new Error('Transaction submission failed');
       }
     } catch (err) {
       console.error('Error sending transaction:', err);
       setButtonState('failed');
-      setTimeout(() => {
-        setButtonState(undefined);
-      }, 3000);
+      setTimeout(() => setButtonState(undefined), 3000);
     }
   };
 
-  // This is a basic transaction call to use Permit2 to spend the token you minted
-  // Make sure to call Mint Token first
   const onClickUsePermit2 = async () => {
+    if (!APP_ID) {
+      console.error('Missing NEXT_PUBLIC_APP_ID for transactions');
+      return;
+    }
+
     setTransactionId('');
     setWhichButton('usePermit2');
     setButtonState('pending');
-    const address = (await MiniKit.getUserByUsername('alex')).walletAddress;
-
-    // Permit2 is valid for max 1 hour
-    const permitTransfer = {
-      permitted: {
-        token: myContractToken,
-        amount: (0.5 * 10 ** 18).toString(),
-      },
-      nonce: Date.now().toString(),
-      deadline: Math.floor((Date.now() + 30 * 60 * 1000) / 1000).toString(),
-    };
-
-    const transferDetails = {
-      to: address,
-      requestedAmount: (0.5 * 10 ** 18).toString(),
-    };
 
     try {
-      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+      const recipient = await getUserWalletByUsername('alex');
+
+      const permitTransfer = {
+        permitted: {
+          token: payContractAddress,
+          amount: (0.5 * 10 ** 18).toString(),
+        },
+        nonce: Date.now().toString(),
+        deadline: Math.floor((Date.now() + 30 * 60 * 1000) / 1000).toString(),
+      } as const;
+
+      const { finalPayload } = await sendTransaction({
         transaction: [
           {
-            address: myContractToken,
-            abi: TestContractABI,
+            address: payContractAddress,
+            abi: payAbi,
             functionName: 'signatureTransfer',
             args: [
               [
-                [
-                  permitTransfer.permitted.token,
-                  permitTransfer.permitted.amount,
-                ],
+                [permitTransfer.permitted.token, permitTransfer.permitted.amount],
                 permitTransfer.nonce,
                 permitTransfer.deadline,
               ],
-              [transferDetails.to, transferDetails.requestedAmount],
+              [
+                recipient ?? '0x0000000000000000000000000000000000000000',
+                permitTransfer.permitted.amount,
+              ],
               'PERMIT2_SIGNATURE_PLACEHOLDER_0',
             ],
           },
@@ -155,24 +129,20 @@ export const Transaction = () => {
         permit2: [
           {
             ...permitTransfer,
-            spender: myContractToken,
+            spender: payContractAddress,
           },
         ],
       });
 
       if (finalPayload.status === 'success') {
-        console.log(
-          'Transaction submitted, waiting for confirmation:',
-          finalPayload.transaction_id,
-        );
         setTransactionId(finalPayload.transaction_id);
       } else {
-        console.error('Transaction submission failed:', finalPayload);
-        setButtonState('failed');
+        throw new Error('Transaction submission failed');
       }
     } catch (err) {
       console.error('Error sending transaction:', err);
       setButtonState('failed');
+      setTimeout(() => setButtonState(undefined), 3000);
     }
   };
 

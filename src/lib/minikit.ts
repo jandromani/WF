@@ -1,99 +1,30 @@
-import { MiniKit, Permission } from '@worldcoin/minikit-js';
+import { MiniKit, type PayCommandInput, type VerifyCommandInput } from '@worldcoin/minikit-js';
 
-type NotificationPayload = {
-  title: string;
-  body: string;
+type SendTransactionParams = Parameters<
+  typeof MiniKit.commandsAsync.sendTransaction
+>[0];
+
+type SendTransactionResult = ReturnType<
+  typeof MiniKit.commandsAsync.sendTransaction
+>;
+
+type PayCommandParams = PayCommandInput;
+
+type VerifyParams = VerifyCommandInput;
+
+export const isWorldApp = () => MiniKit.isInstalled();
+
+export const verify = (params: VerifyParams) =>
+  MiniKit.commandsAsync.verify(params);
+
+export const pay = (params: PayCommandParams) => MiniKit.commandsAsync.pay(params);
+
+export const getPermissions = () => MiniKit.commandsAsync.getPermissions();
+
+export const getUserWalletByUsername = async (username: string) => {
+  const user = await MiniKit.getUserByUsername(username);
+  return user.walletAddress;
 };
 
-type NotificationListener = (notification: NotificationPayload) => void;
-
-const notificationListeners = new Set<NotificationListener>();
-
-let notificationsGranted: boolean | null = null;
-let isRequestingPermission = false;
-
-const isMiniKitAvailable = () =>
-  typeof window !== 'undefined' && typeof MiniKit !== 'undefined';
-
-const emitNotification = (payload: NotificationPayload) => {
-  notificationListeners.forEach((listener) => {
-    listener(payload);
-  });
-};
-
-const ensureNotificationPermission = async () => {
-  if (!isMiniKitAvailable()) {
-    return false;
-  }
-
-  if (notificationsGranted) {
-    return true;
-  }
-
-  if (isRequestingPermission) {
-    return notificationsGranted ?? false;
-  }
-
-  try {
-    isRequestingPermission = true;
-    const permissionsResponse = await MiniKit.commandsAsync
-      .getPermissions?.();
-    const finalPermissions = permissionsResponse?.finalPayload as
-      | { permissions?: { notifications?: boolean } }
-      | undefined;
-
-    if (finalPermissions?.permissions?.notifications) {
-      notificationsGranted = true;
-      return true;
-    }
-
-    const requestResponse = await MiniKit.commandsAsync
-      .requestPermission?.({
-        permission: Permission.Notifications,
-      });
-
-    const requestPayload = requestResponse?.finalPayload as
-      | { status?: string; permissions?: { notifications?: boolean } }
-      | undefined;
-
-    const statusGranted = requestPayload?.status === 'granted';
-
-    notificationsGranted =
-      requestPayload?.permissions?.notifications ?? statusGranted;
-
-    return notificationsGranted;
-  } catch (error) {
-    console.warn('Failed to request MiniKit notification permission', error);
-    notificationsGranted = false;
-    return false;
-  } finally {
-    isRequestingPermission = false;
-  }
-};
-
-export const subscribeToNotifications = (
-  listener: NotificationListener,
-) => {
-  notificationListeners.add(listener);
-  return () => {
-    notificationListeners.delete(listener);
-  };
-};
-
-export const notify = async ({ title, body }: NotificationPayload) => {
-  const payload = { title, body };
-
-  if (await ensureNotificationPermission()) {
-    try {
-      const miniKitNotify = (MiniKit.commandsAsync as unknown as {
-        notify?: (input: NotificationPayload) => Promise<unknown>;
-      })?.notify;
-
-      await miniKitNotify?.(payload);
-    } catch (error) {
-      console.warn('Failed to send MiniKit notification', error);
-    }
-  }
-
-  emitNotification(payload);
-};
+export const sendTransaction = (params: SendTransactionParams): SendTransactionResult =>
+  MiniKit.commandsAsync.sendTransaction(params);
