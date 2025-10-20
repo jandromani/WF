@@ -1,26 +1,17 @@
 import { auth } from '@/auth';
-import { Navigation } from '@/components/Navigation';
-import { Page } from '@/components/PageLayout';
+import { ProtectedShell } from './ProtectedShell';
+import { redirect } from 'next/navigation';
 
-export default async function TabsLayout({
+export default async function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const session = await auth();
 
-  // If the user is not authenticated, redirect to the login page
   if (!session) {
-    console.log('Not authenticated');
-    // redirect('/');
+    redirect('/landing');
   }
 
-  return (
-    <Page>
-      {children}
-      <Page.Footer className="px-0 fixed bottom-0 w-full bg-white">
-        <Navigation />
-      </Page.Footer>
-    </Page>
-  );
+  return <ProtectedShell>{children}</ProtectedShell>;
 }

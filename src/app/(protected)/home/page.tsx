@@ -1,37 +1,31 @@
-import { auth } from '@/auth';
-import { Page } from '@/components/PageLayout';
-import { Pay } from '@/components/Pay';
-import { Transaction } from '@/components/Transaction';
-import { UserInfo } from '@/components/UserInfo';
-import { Verify } from '@/components/Verify';
-import { ViewPermissions } from '@/components/ViewPermissions';
-import { Marble, TopBar } from '@worldcoin/mini-apps-ui-kit-react';
+'use client';
 
-export default async function Home() {
-  const session = await auth();
+import { useEffect } from 'react';
+
+import { BalanceCard } from '@/components/wallet/BalanceCard';
+import { ActivityList } from '@/components/wallet/ActivityList';
+import { ClaimCard } from '@/components/home/ClaimCard';
+import { useWallet } from '@/lib/hooks/useWallet';
+import { useAuthStore } from '@/lib/stores/auth';
+import { useRouter } from 'next/navigation';
+
+export default function HomePage() {
+  const router = useRouter();
+  const worldIdVerified = useAuthStore((state) => state.worldIdVerified);
+  const { balance, activity, claim, isLoading } = useWallet();
+
+  useEffect(() => {
+    if (worldIdVerified) {
+      router.replace('/feed');
+    }
+  }, [router, worldIdVerified]);
 
   return (
-    <>
-      <Page.Header className="p-0">
-        <TopBar
-          title="Home"
-          endAdornment={
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold capitalize">
-                {session?.user.username}
-              </p>
-              <Marble src={session?.user.profilePictureUrl} className="w-12" />
-            </div>
-          }
-        />
-      </Page.Header>
-      <Page.Main className="flex flex-col items-center justify-start gap-4 mb-16">
-        <UserInfo />
-        <Verify />
-        <Pay />
-        <Transaction />
-        <ViewPermissions />
-      </Page.Main>
-    </>
+    <div className="space-y-4">
+      <h1 className="text-2xl font-semibold text-gray-900">Tu panel</h1>
+      <BalanceCard balance={balance} isLoading={isLoading} />
+      <ClaimCard disabled={!worldIdVerified} onClaim={claim} />
+      <ActivityList items={activity} isLoading={isLoading} />
+    </div>
   );
 }

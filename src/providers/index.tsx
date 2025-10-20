@@ -5,6 +5,8 @@ import { SessionProvider } from 'next-auth/react';
 import dynamic from 'next/dynamic';
 import type { ReactNode } from 'react';
 
+import { ToastProvider } from '@/components/common/Toast';
+
 const ErudaProvider = dynamic(
   () => import('@/providers/Eruda').then((c) => c.ErudaProvider),
   { ssr: false },
@@ -35,7 +37,9 @@ export default function ClientProviders({
   return (
     <ErudaProvider>
       <MiniKitProvider>
-        <SessionProvider session={session}>{children}</SessionProvider>
+        <SessionProvider session={session}>
+          <ToastProvider>{children}</ToastProvider>
+        </SessionProvider>
       </MiniKitProvider>
     </ErudaProvider>
   );
