@@ -3,6 +3,8 @@ import { Button, LiveFeedback } from '@worldcoin/mini-apps-ui-kit-react';
 import { MiniKit, Tokens, tokenToDecimals } from '@worldcoin/minikit-js';
 import { useState } from 'react';
 
+import { useWalletStore } from '@/store/useWalletStore';
+
 /**
  * This component is used to pay a user
  * The payment command simply does an ERC20 transfer
@@ -12,67 +14,106 @@ export const Pay = () => {
   const [buttonState, setButtonState] = useState<
     'pending' | 'success' | 'failed' | undefined
   >(undefined);
+  const [activeAction, setActiveAction] = useState<'subscription' | 'tip' | null>(
+    null,
+  );
+  const applyMovement = useWalletStore((state) => state.applyMovement);
 
-  const onClickPay = async () => {
-    // Lets use Alex's username to pay!
-    const address = (await MiniKit.getUserByUsername('alex')).walletAddress;
+  const executePayCommand = async (amount: number, description: string) => {
+    try {
+      const alexUser = await MiniKit.getUserByUsername('alex');
+      const res = await fetch('/api/initiate-payment', {
+        method: 'POST',
+      });
+      const { id } = await res.json();
+
+      if (MiniKit.commandsAsync.pay) {
+        const result = await MiniKit.commandsAsync.pay({
+          reference: id,
+          to: alexUser.walletAddress ??
+            '0x0000000000000000000000000000000000000000',
+          tokens: [
+            {
+              symbol: Tokens.WLD,
+              token_amount: tokenToDecimals(amount, Tokens.WLD).toString(),
+            },
+          ],
+          description,
+        });
+
+        if (result.finalPayload.status !== 'success') {
+          throw new Error('Payment was rejected');
+        }
+      }
+    } catch (error) {
+      console.warn('MiniKit pay command unavailable', error);
+    }
+  };
+
+  const runAction = async (
+    kind: 'subscription' | 'tip',
+    amount: number,
+    label: string,
+  ) => {
+    if (buttonState === 'pending') {
+      return;
+    }
+
     setButtonState('pending');
+    setActiveAction(kind);
 
-    const res = await fetch('/api/initiate-payment', {
-      method: 'POST',
-    });
-    const { id } = await res.json();
-
-    const result = await MiniKit.commandsAsync.pay({
-      reference: id,
-      to: address ?? '0x0000000000000000000000000000000000000000',
-      tokens: [
-        {
-          symbol: Tokens.WLD,
-          token_amount: tokenToDecimals(0.5, Tokens.WLD).toString(),
-        },
-        {
-          symbol: Tokens.USDCE,
-          token_amount: tokenToDecimals(0.1, Tokens.USDCE).toString(),
-        },
-      ],
-      description: 'Test example payment for minikit',
-    });
-
-    console.log(result.finalPayload);
-    if (result.finalPayload.status === 'success') {
+    try {
+      await executePayCommand(amount, label);
+      applyMovement({ kind, title: label, amount: -amount });
       setButtonState('success');
-      // It's important to actually check the transaction result on-chain
-      // You should confirm the reference id matches for security
-      // Read more here: https://docs.world.org/mini-apps/commands/pay#verifying-the-payment
-    } else {
+    } catch (error) {
+      console.error('Payment failed', error);
       setButtonState('failed');
-      setTimeout(() => {
-        setButtonState(undefined);
-      }, 3000);
+      setTimeout(() => setButtonState(undefined), 3000);
     }
   };
 
   return (
-    <div className="grid w-full gap-4">
-      <p className="text-lg font-semibold">Pay</p>
+    <div className="grid w-full gap-4" data-testid="pay-actions">
+      <p className="text-lg font-semibold">Pagos</p>
       <LiveFeedback
         label={{
-          failed: 'Payment failed',
-          pending: 'Payment pending',
-          success: 'Payment successful',
+          failed: 'Pago fallido',
+          pending: 'Procesando pago',
+          success: 'Pago exitoso',
         }}
-        state={buttonState}
+        state={activeAction === 'subscription' ? buttonState : undefined}
         className="w-full"
       >
         <Button
-          onClick={onClickPay}
+          onClick={() => runAction('subscription', 1.5, 'Suscripción mensual')}
           disabled={buttonState === 'pending'}
           size="lg"
           variant="primary"
           className="w-full"
+          data-testid="subscribe-action"
         >
-          Pay
+          Suscribirse
+        </Button>
+      </LiveFeedback>
+      <LiveFeedback
+        label={{
+          failed: 'Pago fallido',
+          pending: 'Procesando pago',
+          success: 'Pago exitoso',
+        }}
+        state={activeAction === 'tip' ? buttonState : undefined}
+        className="w-full"
+      >
+        <Button
+          onClick={() => runAction('tip', 0.4, 'Tip rápido')}
+          disabled={buttonState === 'pending'}
+          size="lg"
+          variant="secondary"
+          className="w-full"
+          data-testid="tip-action"
+        >
+          Enviar propina
         </Button>
       </LiveFeedback>
     </div>
