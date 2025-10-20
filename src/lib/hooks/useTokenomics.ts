@@ -26,7 +26,12 @@ export function useTokenomics(): TokenomicsHook {
   const burnSWR = useSWR<BurnStats, Error>(['tokenomics', 'burn'], getBurnStats);
 
   const isLoading = supplySWR.isLoading || epochSWR.isLoading || burnSWR.isLoading;
-  const error = supplySWR.error ?? epochSWR.error ?? burnSWR.error ?? undefined;
+
+  const fallbackError =
+    supplySWR.data?.error ?? epochSWR.data?.error ?? burnSWR.data?.error;
+
+  const error =
+    supplySWR.error ?? epochSWR.error ?? burnSWR.error ?? fallbackError ?? undefined;
 
   const refresh = async () => {
     await Promise.all([supplySWR.mutate(), epochSWR.mutate(), burnSWR.mutate()]);
