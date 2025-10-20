@@ -1,5 +1,12 @@
 import { MiniKit, type PayCommandInput, type VerifyCommandInput } from '@worldcoin/minikit-js';
 
+import {
+  enqueueNotification,
+  subscribeToNotificationQueue,
+  type NotificationPayload as NotificationPayloadFromStore,
+  type NotificationRecord,
+} from './stores/notifications';
+
 type SendTransactionParams = Parameters<
   typeof MiniKit.commandsAsync.sendTransaction
 >[0];
@@ -28,3 +35,29 @@ export const getUserWalletByUsername = async (username: string) => {
 
 export const sendTransaction = (params: SendTransactionParams): SendTransactionResult =>
   MiniKit.commandsAsync.sendTransaction(params);
+
+export type NotificationPayload = NotificationPayloadFromStore;
+
+export const notify = async (
+  payload: NotificationPayload,
+): Promise<NotificationRecord> => {
+  const record = enqueueNotification(payload);
+
+  const maybeNotify = (MiniKit.commandsAsync as unknown as {
+    notify?: (input: NotificationPayload) => Promise<void>;
+  }).notify;
+
+  if (typeof maybeNotify === 'function') {
+    try {
+      await maybeNotify(payload);
+    } catch (error) {
+      console.warn('MiniKit notification failed', error);
+    }
+  }
+
+  return record;
+};
+
+export const subscribeToNotifications = (
+  listener: (notifications: NotificationRecord[]) => void,
+) => subscribeToNotificationQueue(listener);

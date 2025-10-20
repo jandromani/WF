@@ -2,26 +2,15 @@
 
 import { useEffect, useState } from 'react';
 
-import {
-  subscribeToNotifications,
-} from '@/lib/minikit';
-
-export type NotificationRecord = {
-  title: string;
-  body: string;
-  id: string;
-};
+import { subscribeToNotifications } from '@/lib/minikit';
+import { type NotificationRecord } from '@/lib/stores/notifications';
 
 export const NotificationCenter = () => {
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
 
   useEffect(() => {
-    const unsubscribe = subscribeToNotifications(({ title, body }) => {
-      setNotifications((prev) => [{
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        title,
-        body,
-      }, ...prev].slice(0, 3));
+    const unsubscribe = subscribeToNotifications((records) => {
+      setNotifications(records.slice(0, 3));
     });
 
     return () => {
