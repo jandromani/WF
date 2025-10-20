@@ -35,6 +35,7 @@ export const SubscribeButton = ({ creatorId, price, disabled }: Props) => {
         type="button"
         onClick={handleSubscribe}
         disabled={disabled || status === 'pending'}
+        data-testid="subscribe-button"
         className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
       >
         {status === 'pending' && 'Subscribing…'}
