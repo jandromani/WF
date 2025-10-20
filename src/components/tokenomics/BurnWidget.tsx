@@ -1,31 +1,42 @@
-import { BurnStats } from '@/services/tokenomics';
+import { formatNumber } from '@/lib/number';
 
-interface BurnWidgetProps {
-  data?: BurnStats;
-  isLoading?: boolean;
+async function fetchBurnStats() {
+  return {
+    burnRate: 6.2,
+    last24hBurn: 125_000,
+    cumulativeBurn: 2_450_000,
+  };
 }
 
-export function BurnWidget({ data, isLoading }: BurnWidgetProps) {
+export async function BurnWidget() {
+  const { burnRate, last24hBurn, cumulativeBurn } = await fetchBurnStats();
+
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-6">
-      <h3 className="text-base font-semibold text-gray-900">Burn dinámico</h3>
-      <p className="mt-1 text-sm text-gray-500">
-        Porcentaje de fees quemados y tokens eliminados en el último epoch.
-      </p>
-      <div className="mt-4 grid grid-cols-2 gap-4">
-        <div className="rounded-xl bg-gray-100 p-4 text-center">
-          <p className="text-xs uppercase tracking-widest text-gray-500">Burn rate</p>
-          <p className="mt-2 text-2xl font-semibold text-gray-900">
-            {isLoading || !data ? '—' : `${(data.rate * 100).toFixed(1)}%`}
-          </p>
+    <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg backdrop-blur">
+      <header className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-white">Burn</h2>
+        <span className="text-sm text-white/60">Dinámico</span>
+      </header>
+      <dl className="space-y-3 text-white">
+        <div className="flex items-center justify-between">
+          <dt className="text-sm text-white/70">Tasa actual</dt>
+          <dd className="text-xl font-semibold">{formatNumber(burnRate)}%</dd>
         </div>
-        <div className="rounded-xl bg-gray-100 p-4 text-center">
-          <p className="text-xs uppercase tracking-widest text-gray-500">Último epoch</p>
-          <p className="mt-2 text-2xl font-semibold text-gray-900">
-            {isLoading || !data ? '—' : `${data.lastEpochBurn.toLocaleString()} WFANS`}
-          </p>
+        <div className="flex items-center justify-between">
+          <dt className="text-sm text-white/70">Quemado últimas 24h</dt>
+          <dd className="text-lg font-medium">{formatNumber(last24hBurn)} WFANS</dd>
         </div>
-      </div>
+        <div className="flex items-center justify-between">
+          <dt className="text-sm text-white/70">Total quemado</dt>
+          <dd className="text-lg font-medium">{formatNumber(cumulativeBurn)} WFANS</dd>
+        </div>
+        <div className="flex items-center justify-between">
+          <dt className="text-sm text-white/70">Dirección de treasury</dt>
+          <dd className="text-xs font-mono text-white/80">
+            {process.env.NEXT_PUBLIC_TREASURY_ADDRESS ?? 'Define NEXT_PUBLIC_TREASURY_ADDRESS'}
+          </dd>
+        </div>
+      </dl>
     </section>
   );
 }

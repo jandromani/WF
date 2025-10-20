@@ -1,36 +1,46 @@
-import { EpochStats } from '@/services/tokenomics';
+import { formatNumber } from '@/lib/number';
 
-interface EpochWidgetProps {
-  data?: EpochStats;
-  isLoading?: boolean;
+async function fetchEpochStats() {
+  // Placeholder hasta que se conecte al subgraph / contrato real.
+  return {
+    currentEpoch: 42,
+    epochEndsAt: new Date(Date.now() + 1000 * 60 * 60 * 24),
+    activityScore: 87.5,
+  };
 }
 
-export function EpochWidget({ data, isLoading }: EpochWidgetProps) {
-  const progress = Math.min(1, Math.max(0, data?.progress ?? 0));
+export async function EpochWidget() {
+  const { currentEpoch, epochEndsAt, activityScore } = await fetchEpochStats();
+
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-base font-semibold text-gray-900">Epoch #{data?.id ?? '—'}</h3>
-          <p className="text-sm text-gray-500">
-            El epoch actual define las recompensas de creadores y fans.
-          </p>
+    <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg backdrop-blur">
+      <header className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-white">Epoch</h2>
+        <span className="text-sm text-white/60">#{currentEpoch}</span>
+      </header>
+      <dl className="space-y-3 text-white">
+        <div className="flex items-center justify-between">
+          <dt className="text-sm text-white/70">Termina</dt>
+          <dd className="text-lg font-medium">
+            {epochEndsAt.toLocaleDateString('es-ES', {
+              day: '2-digit',
+              month: 'short',
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </dd>
         </div>
-        <span className="text-sm font-semibold text-gray-900">
-          {isLoading || !data ? '—' : `${Math.round(progress * 100)}%`}
-        </span>
-      </div>
-      <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-gray-200">
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all"
-          style={{ width: `${progress * 100}%` }}
-        />
-      </div>
-      {data?.endsAt ? (
-        <p className="mt-3 text-xs text-gray-500">
-          Finaliza el {new Date(data.endsAt).toLocaleString()}.
-        </p>
-      ) : null}
+        <div className="flex items-center justify-between">
+          <dt className="text-sm text-white/70">Activity Score</dt>
+          <dd className="text-xl font-semibold">{formatNumber(activityScore)}%</dd>
+        </div>
+        <div className="flex items-center justify-between">
+          <dt className="text-sm text-white/70">Contrato controlador</dt>
+          <dd className="text-xs font-mono text-white/80">
+            {process.env.NEXT_PUBLIC_EPOCH_CONTROLLER ?? 'Define NEXT_PUBLIC_EPOCH_CONTROLLER'}
+          </dd>
+        </div>
+      </dl>
     </section>
   );
 }

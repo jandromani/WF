@@ -1,33 +1,37 @@
-import { SupplyStats } from '@/services/tokenomics';
+import { formatNumber } from '@/lib/number';
 
-interface SupplyWidgetProps {
-  data?: SupplyStats;
-  isLoading?: boolean;
+async function fetchMockedSupply() {
+  // TODO: Replace with viem call once mainnet addresses estén disponibles.
+  const circulating = 12_345_678.9;
+  const maxSupply = 21_000_000;
+  return { circulating, maxSupply };
 }
 
-export function SupplyWidget({ data, isLoading }: SupplyWidgetProps) {
+export async function SupplyWidget() {
+  const { circulating, maxSupply } = await fetchMockedSupply();
+
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-6">
-      <h3 className="text-base font-semibold text-gray-900">Oferta de WFANS</h3>
-      <div className="mt-4 grid grid-cols-3 gap-4 text-center">
-        {[
-          { label: 'Circulante', value: data?.circulating },
-          { label: 'Total', value: data?.total },
-          { label: 'Quemado', value: data?.burned },
-        ].map((item) => (
-          <div key={item.label} className="rounded-xl bg-gray-100 p-4">
-            <p className="text-xs uppercase tracking-wide text-gray-500">
-              {item.label}
-            </p>
-            <p className="mt-2 text-lg font-semibold text-gray-900">
-              {isLoading || item.value === undefined
-                ? '—'
-                : item.value.toLocaleString('es-ES')}{' '}
-              <span className="text-xs font-medium text-gray-500">WFANS</span>
-            </p>
-          </div>
-        ))}
-      </div>
+    <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg backdrop-blur">
+      <header className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-white">Supply</h2>
+        <span className="text-sm text-white/60">En vivo</span>
+      </header>
+      <dl className="space-y-3 text-white">
+        <div className="flex items-center justify-between">
+          <dt className="text-sm text-white/70">Circulante</dt>
+          <dd className="text-xl font-semibold">{formatNumber(circulating)} WFANS</dd>
+        </div>
+        <div className="flex items-center justify-between">
+          <dt className="text-sm text-white/70">Máximo programado</dt>
+          <dd className="text-lg font-medium">{formatNumber(maxSupply)} WFANS</dd>
+        </div>
+        <div className="flex items-center justify-between">
+          <dt className="text-sm text-white/70">Dirección del token</dt>
+          <dd className="text-xs font-mono text-white/80">
+            {process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? 'Configura NEXT_PUBLIC_TOKEN_ADDRESS'}
+          </dd>
+        </div>
+      </dl>
     </section>
   );
 }
