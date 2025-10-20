@@ -24,6 +24,10 @@ export default auth((request) => {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = '/(protected)/home';
       redirectUrl.searchParams.set('world_app', '1');
+      if (process.env.NODE_ENV === 'development') {
+        console.info('Redirecting World App request to /(protected)/home');
+        console.debug('World App redirect URL', redirectUrl.toString());
+      }
       const redirectResponse = NextResponse.redirect(redirectUrl);
       redirectResponse.cookies.set('isWorldApp', '1', {
         path: '/',
@@ -48,5 +52,5 @@ export default auth((request) => {
 });
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/(protected)(.*)'],
 };
