@@ -1,82 +1,29 @@
 import {
   type ISuccessResult,
   type IVerifyResponse,
-  type MiniAppVerifyActionPayload,
   verifyCloudProof,
 } from '@worldcoin/minikit-js';
 
-type RateLimitState = {
-  count: number;
-  expiresAt: number;
-};
+const hasProofFields = (payload: ISuccessResult) => {
+  const maybeRoot =
+    (payload as unknown as { merkle_root?: string }).merkle_root ??
+    (payload as unknown as { root?: string }).root;
 
-type RateLimitKey = 'ip' | 'wallet';
-
-type ValidateParams = {
-  payload: ISuccessResult;
-  action: string;
-  signal?: string;
-  ip?: string | null;
-};
-
-const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
-const RATE_LIMIT_MAX_REQUESTS = 5;
-
-const nullifierCache = new Set<string>();
-const rateLimiters: Record<RateLimitKey, Map<string, RateLimitState>> = {
-  ip: new Map(),
-  wallet: new Map(),
-};
-
-const getIdentifier = (payload: ISuccessResult): string | undefined => {
-  const maybeWallet = (payload as unknown as { wallet_address?: string })
-    ?.wallet_address;
-  if (maybeWallet && maybeWallet.startsWith('0x')) {
-    return maybeWallet.toLowerCase();
-  }
-  const maybeSignal = (payload as unknown as { signal?: string })?.signal;
-  return maybeSignal?.toLowerCase();
-};
-
-const assertRateLimit = (key: RateLimitKey, identifier?: string, ip?: string) => {
-  const map = rateLimiters[key];
-  const value = key === 'ip' ? ip : identifier;
-  if (!value) {
-    return;
-  }
-  const existing = map.get(value);
-  const now = Date.now();
-  if (!existing || existing.expiresAt < now) {
-    map.set(value, { count: 1, expiresAt: now + RATE_LIMIT_WINDOW_MS });
-    return;
-  }
-
-  if (existing.count >= RATE_LIMIT_MAX_REQUESTS) {
-    throw new Error('Rate limit exceeded');
-  }
-
-  existing.count += 1;
-  map.set(value, existing);
+  return Boolean(payload?.nullifier_hash && payload?.proof && maybeRoot);
 };
 
 export const validateWorldIdProof = async ({
   payload,
   action,
   signal,
-  ip,
-}: ValidateParams): Promise<IVerifyResponse> => {
-  if (!payload?.nullifier_hash || !payload?.merkle_root || !payload?.proof) {
+}: {
+  payload: ISuccessResult;
+  action: string;
+  signal?: string;
+}): Promise<IVerifyResponse> => {
+  if (!hasProofFields(payload)) {
     throw new Error('Incomplete World ID proof');
   }
-
-  if (nullifierCache.has(payload.nullifier_hash)) {
-    throw new Error('Proof already used');
-  }
-
-  const identifier = getIdentifier(payload);
-
-  assertRateLimit('ip', undefined, ip ?? undefined);
-  assertRateLimit('wallet', identifier, ip ?? undefined);
 
   const appId = process.env.NEXT_PUBLIC_APP_ID as `app_${string}` | undefined;
   if (!appId) {
@@ -94,20 +41,18 @@ export const validateWorldIdProof = async ({
     throw new Error(verification.detail ?? 'World ID verification failed');
   }
 
-  nullifierCache.add(payload.nullifier_hash);
-
   return verification;
 };
 
 export type WorldIDProof = ISuccessResult;
 
 const isSuccessPayload = (
-  payload: MiniAppVerifyActionPayload | ISuccessResult,
+  payload: Parameters<typeof verifyCloudProof>[0] | ISuccessResult,
 ): payload is ISuccessResult =>
   'status' in payload ? payload.status === 'success' : true;
 
 export const postProof = async (proof: {
-  payload: MiniAppVerifyActionPayload | ISuccessResult;
+  payload: Parameters<typeof verifyCloudProof>[0] | ISuccessResult;
   action: string;
   signal?: string;
 }) => {
