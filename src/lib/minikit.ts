@@ -11,6 +11,7 @@ type SendTransactionResult = ReturnType<
 type PayCommandParams = PayCommandInput;
 
 type VerifyParams = VerifyCommandInput;
+type NotifyParams = Parameters<typeof MiniKit.commandsAsync.notify>[0];
 
 export const isWorldApp = () => MiniKit.isInstalled();
 
@@ -20,6 +21,8 @@ export const verify = (params: VerifyParams) =>
 export const pay = (params: PayCommandParams) => MiniKit.commandsAsync.pay(params);
 
 export const getPermissions = () => MiniKit.commandsAsync.getPermissions();
+
+export const notify = (params: NotifyParams) => MiniKit.commandsAsync.notify(params);
 
 export const getUserWalletByUsername = async (username: string) => {
   const user = await MiniKit.getUserByUsername(username);
