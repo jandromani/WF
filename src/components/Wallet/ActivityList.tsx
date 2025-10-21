@@ -1,72 +1,49 @@
-'use client';
+import { WalletActivityItem } from '@/services/wallet';
 
-import { useWallet } from '@/providers/WalletProvider';
+interface ActivityListProps {
+  items?: WalletActivityItem[];
+  isLoading?: boolean;
+}
 
-const typeLabels: Record<string, { label: string; accent: string }> = {
-  daily_claim: { label: 'Daily Claim', accent: 'text-emerald-500' },
-  subscription: { label: 'Subscription', accent: 'text-rose-500' },
-  tip: { label: 'Tip', accent: 'text-orange-500' },
-  referral: { label: 'Referral', accent: 'text-sky-500' },
-  unlock: { label: 'Unlock', accent: 'text-violet-500' },
-  buy_wfans: { label: 'Buy WFANS', accent: 'text-blue-500' },
-  other: { label: 'Activity', accent: 'text-slate-500' },
+const typeLabels: Record<WalletActivityItem['type'], string> = {
+  claim: 'Recompensa diaria',
+  tip: 'Tip enviado',
+  subscribe: 'Suscripción',
+  buy: 'Compra',
 };
 
-const formatRelativeTime = (timestamp: number) => {
-  const diff = Date.now() - timestamp;
-  const minutes = Math.floor(diff / (1000 * 60));
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-};
-
-export const ActivityList = () => {
-  const { activities } = useWallet();
-
+export function ActivityList({ items, isLoading }: ActivityListProps) {
   return (
-    <div className="w-full rounded-2xl border border-slate-200/50 bg-white/70 p-4 shadow-sm backdrop-blur">
-      <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-        Activity
-      </p>
-      <ul className="flex flex-col divide-y divide-slate-200/70 text-sm">
-        {activities.map((activity) => {
-          const meta = typeLabels[activity.type] ?? typeLabels.other;
-          const amountPrefix = activity.direction === 'out' ? '-' : '+';
-
-          return (
-            <li
-              key={activity.id}
-              className="flex items-center justify-between py-3 text-slate-900"
-            >
-              <div className="flex flex-col">
-                <span className="font-medium">
-                  <span className={meta.accent}>{meta.label}</span>
-                  {activity.counterparty ? ` · ${activity.counterparty}` : ''}
+    <section className="rounded-2xl border border-gray-200 bg-white p-4">
+      <h3 className="text-base font-semibold text-gray-900">Actividad reciente</h3>
+      <div className="mt-4 space-y-3">
+        {isLoading
+          ? [1, 2, 3].map((skeleton) => (
+              <div key={skeleton} className="animate-pulse rounded-lg bg-gray-100 p-3" />
+            ))
+          : items?.map((item) => (
+              <article key={item.id} className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    {typeLabels[item.type]}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {new Date(item.timestamp).toLocaleString()}
+                  </p>
+                </div>
+                <span
+                  className="text-sm font-semibold"
+                  aria-label={`${item.amount} WFANS`}
+                >
+                  {item.amount > 0 ? '+' : ''}
+                  {item.amount}
                 </span>
-                <span className="text-xs text-slate-500">
-                  {activity.description ?? activity.memo}
-                </span>
-              </div>
-              <div className="text-right">
-                <p className="font-semibold text-slate-800">
-                  {amountPrefix}
-                  {activity.amount.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}{' '}
-                  WLDY
-                </p>
-                <p className="text-xs text-slate-400">
-                  {formatRelativeTime(activity.timestamp)}
-                </p>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
+              </article>
+            ))}
+        {!isLoading && !items?.length ? (
+          <p className="text-sm text-gray-500">Sin actividad todavía.</p>
+        ) : null}
+      </div>
+    </section>
   );
-};
+}

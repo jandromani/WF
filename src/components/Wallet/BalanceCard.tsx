@@ -1,29 +1,29 @@
-'use client';
+import { WalletBalance } from '@/services/wallet';
 
-import { useWallet } from '@/providers/WalletProvider';
+interface BalanceCardProps {
+  balance?: WalletBalance;
+  isLoading?: boolean;
+}
 
-export const BalanceCard = () => {
-  const { balance } = useWallet();
-  const approxUsd = balance.wldy * balance.usdRate;
-
+export function BalanceCard({ balance, isLoading }: BalanceCardProps) {
   return (
-    <div className="w-full rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-500 p-5 text-white shadow-lg">
-      <p className="text-sm uppercase tracking-wide text-white/80">Balance</p>
-      <p className="mt-2 text-4xl font-semibold">
-        {balance.wldy.toLocaleString(undefined, {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}{' '}
-        WLDY
-      </p>
-      <p className="mt-1 text-sm text-white/70">
-        ≈ $
-        {approxUsd.toLocaleString(undefined, {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}{' '}
-        USD
-      </p>
-    </div>
+    <section className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-black p-6 text-white shadow-lg">
+      <p className="text-sm uppercase tracking-widest text-white/70">Saldo disponible</p>
+      <div className="mt-4 flex items-end justify-between">
+        <div>
+          <p className="text-3xl font-semibold">
+            {isLoading ? '—' : balance ? balance.amount.toFixed(2) : '0.00'}{' '}
+            <span className="text-base font-medium text-white/80">
+              {balance?.symbol ?? 'WFANS'}
+            </span>
+          </p>
+          {balance?.fiatValue !== undefined ? (
+            <p className="text-sm text-white/70">
+              ≈ ${balance.fiatValue.toFixed(2)} USD
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </section>
   );
-};
+}

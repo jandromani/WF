@@ -1,45 +1,79 @@
 'use client';
 
-interface Props {
-  rate: string;
-  pending: string;
-  lastEpoch: number;
-}
+import { useTokenomics } from '@/lib/hooks/useTokenomics';
+import { formatNumber } from '@/lib/number';
 
-export const BurnWidget = ({ rate, pending, lastEpoch }: Props) => {
-  return (
-    <div className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Burns
+export function BurnWidget() {
+  const { burn, isLoading, error } = useTokenomics();
+
+  const isFallback = burn?.isFallback ?? false;
+
+  if (isLoading && !burn) {
+    return (
+      <section className="rounded-2xl border border-white/10 bg-white/5 p-6 text-white shadow-lg backdrop-blur">
+        <header className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Burn</h2>
+          <span className="text-sm text-white/60">Cargando…</span>
+        </header>
+        <p className="text-sm text-white/70">Consultando métricas de quema…</p>
+      </section>
+    );
+  }
+
+  if (!burn) {
+    return (
+      <section className="rounded-2xl border border-white/10 bg-white/5 p-6 text-white shadow-lg backdrop-blur">
+        <header className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Burn</h2>
+          <span className="text-sm text-white/60">Sin datos</span>
+        </header>
+        <p className="text-sm text-red-300">
+          No fue posible calcular las métricas de burn.
         </p>
-        <h3 className="text-xl font-semibold text-slate-900">
-          Dynamic burn engine
-        </h3>
+        {error && (
+          <p className="mt-2 text-xs text-white/60">Detalles: {error.message}</p>
+        )}
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg backdrop-blur">
+      <header className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-white">Burn</h2>
+        <span className="text-sm text-white/60">{isFallback ? 'Mock' : 'Dinámico'}</span>
       </header>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <BurnStat label="Active rate" value={rate} />
-        <BurnStat label="Pending burn" value={`${pending} WLDY`} />
-        <BurnStat label="Last burn epoch" value={`#${lastEpoch}`} />
-      </div>
-      <p className="text-sm text-slate-600">
-        Burns are sourced from the 5% treasury share of MiniKit payments. When on-chain,
-        the burn executes automatically with treasury payouts.
-      </p>
-    </div>
+      <dl className="space-y-3 text-white">
+        <div className="flex items-center justify-between">
+          <dt className="text-sm text-white/70">Tasa actual</dt>
+          <dd className="text-xl font-semibold">
+            {formatNumber(burn.burnRate)}%
+          </dd>
+        </div>
+        <div className="flex items-center justify-between">
+          <dt className="text-sm text-white/70">Quemado pendiente</dt>
+          <dd className="text-lg font-medium">
+            {formatNumber(burn.pending)} WFANS
+          </dd>
+        </div>
+        <div className="flex items-center justify-between">
+          <dt className="text-sm text-white/70">Última epoch quemada</dt>
+          <dd className="text-lg font-medium">#{burn.lastEpoch}</dd>
+        </div>
+        <div className="flex items-center justify-between">
+          <dt className="text-sm text-white/70">Dirección de treasury</dt>
+          <dd className="text-xs font-mono text-white/80">
+            {burn.treasuryAddress}
+          </dd>
+        </div>
+      </dl>
+      {(error || isFallback) && (
+        <p className="mt-4 text-xs text-white/60">
+          {error
+            ? `Información parcial: ${error.message}`
+            : 'Mostrando datos temporales mientras el RPC responde.'}
+        </p>
+      )}
+    </section>
   );
-};
-
-interface BurnStatProps {
-  label: string;
-  value: string;
 }
-
-const BurnStat = ({ label, value }: BurnStatProps) => (
-  <div className="rounded-2xl bg-slate-50 p-4">
-    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-      {label}
-    </p>
-    <p className="mt-2 text-lg font-semibold text-slate-900">{value}</p>
-  </div>
-);
