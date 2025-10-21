@@ -5,15 +5,6 @@ import { Bank, Home, User } from 'iconoir-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import { Home, Group, Wallet, Settings } from 'iconoir-react';
-
-const NAV_ITEMS = [
-  { href: '/feed', label: 'Feed', icon: Home },
-  { href: '/creators', label: 'Creators', icon: Group },
-  { href: '/wallet', label: 'Wallet', icon: Wallet },
-  { href: '/settings', label: 'Settings', icon: Settings },
-];
-
 const tabs = [
   { value: '/home', icon: <Home />, label: 'Home' },
   { value: '/wallet', icon: <Bank />, label: 'Wallet' },

@@ -1,98 +1,83 @@
 'use client';
 
-import { Button, LiveFeedback } from '@worldcoin/mini-apps-ui-kit-react';
-import { VerificationLevel } from '@worldcoin/minikit-js';
+import { Button } from '@worldcoin/mini-apps-ui-kit-react';
+import clsx from 'clsx';
 import { useState } from 'react';
 
 import { verify } from '@/lib/minikit';
-import { postProof } from '@/lib/worldid';
+import { useAuthStore } from '@/lib/stores/auth';
 
-export const VerifyGate = () => {
-  const [buttonState, setButtonState] = useState<
-    'pending' | 'success' | 'failed' | undefined
-  >(undefined);
-  const [whichVerification, setWhichVerification] = useState<VerificationLevel>(
-    VerificationLevel.Device,
-  );
+type VerifyState = 'idle' | 'pending' | 'success' | 'error';
 
+interface VerifyGateProps {
+  className?: string;
+}
+
+const ACTION_ID = process.env.NEXT_PUBLIC_ACTION_ID ?? 'wfans-create-account';
+
+export function VerifyGate({ className }: VerifyGateProps) {
+  const worldIdVerified = useAuthStore((state) => state.worldIdVerified);
   const setWorldIdVerified = useAuthStore((state) => state.setWorldIdVerified);
+  const [state, setState] = useState<VerifyState>('idle');
 
-  const onClickVerify = async (verificationLevel: VerificationLevel) => {
-    setButtonState('pending');
-    setWhichVerification(verificationLevel);
+  const handleVerify = async () => {
+    if (state === 'pending' || worldIdVerified) {
+      return;
+    }
+
+    setState('pending');
 
     try {
-      const result = await verify({
-        action: 'test-action',
-        verification_level: verificationLevel,
-      });
+      const result = await verify(ACTION_ID);
+      const status = result?.finalPayload?.status;
 
-      const response = await postProof({
-        payload: result.finalPayload,
-        action: 'test-action',
-      });
-
-      if (response?.verifyRes?.success) {
-        setButtonState('success');
-      } else {
-        throw new Error('Verification rejected');
+      if (status !== 'success') {
+        throw new Error('Verification failed');
       }
+
+      setState('success');
+      setWorldIdVerified(true);
     } catch (error) {
       console.error('Verification error', error);
-      setButtonState('failed');
-      setTimeout(() => {
-        setButtonState(undefined);
-      }, 2000);
+      setState('error');
+      setTimeout(() => setState('idle'), 2000);
     }
   };
 
+  if (worldIdVerified) {
+    return null;
+  }
+
   return (
-    <div className="grid w-full gap-4">
-      <p className="text-lg font-semibold">Verify</p>
-      <LiveFeedback
-        label={{
-          failed: 'Failed to verify',
-          pending: 'Verifying',
-          success: 'Verified',
-        }}
-        state={
-          whichVerification === VerificationLevel.Device ? buttonState : undefined
-        }
+    <div
+      data-testid="verification-gate"
+      className={clsx(
+        'flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm',
+        className,
+      )}
+    >
+      <div className="grid gap-2 text-center">
+        <p className="text-lg font-semibold">Verifica tu World ID</p>
+        <p className="text-sm text-slate-600">
+          Para continuar necesitamos confirmar tu verificación en World App.
+        </p>
+      </div>
+      <Button
+        data-testid="verify-cta"
+        size="lg"
+        variant="primary"
         className="w-full"
+        disabled={state === 'pending'}
+        onClick={handleVerify}
       >
-        <Button
-          onClick={() => onClickVerify(VerificationLevel.Device)}
-          disabled={buttonState === 'pending'}
-          size="lg"
-          variant="tertiary"
-          className="w-full"
-          data-testid="verify-device"
-        >
-          Verify (Device)
-        </Button>
-      </LiveFeedback>
-      <LiveFeedback
-        label={{
-          failed: 'Failed to verify',
-          pending: 'Verifying',
-          success: 'Verified',
-        }}
-        state={
-          whichVerification === VerificationLevel.Orb ? buttonState : undefined
-        }
-        className="w-full"
-      >
-        <Button
-          onClick={() => onClickVerify(VerificationLevel.Orb)}
-          disabled={buttonState === 'pending'}
-          size="lg"
-          variant="primary"
-          className="w-full"
-          data-testid="verify-orb"
-        >
-          Verify (Orb)
-        </Button>
-      </LiveFeedback>
+        Verificar con World ID
+      </Button>
+      {state === 'error' ? (
+        <p className="text-center text-xs text-red-500">No pudimos verificarte. Intenta nuevamente.</p>
+      ) : null}
+      {state === 'success' ? (
+        <p className="text-center text-xs text-emerald-500">¡Listo! Ya puedes usar todas las funciones.</p>
+      ) : null}
     </div>
   );
-};
+}

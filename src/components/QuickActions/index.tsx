@@ -1,9 +1,8 @@
 'use client';
 
 import { Button } from '@worldcoin/mini-apps-ui-kit-react';
-import { MiniKit } from '@worldcoin/minikit-js';
 
-import { notify } from '@/lib/minikit';
+import { notify, share } from '@/lib/minikit';
 
 const buildDeepLink = (path: string) => `worldapp://mini-app?path=${encodeURIComponent(path)}`;
 
@@ -15,16 +14,12 @@ const shareDeepLink = async (url: string, title: string) => {
   };
 
   try {
-    if (MiniKit.commandsAsync.share) {
-      await MiniKit.commandsAsync.share(sharePayload);
-      return;
-    }
-
+    await share(sharePayload);
+  } catch (error) {
+    console.warn('Failed to share deep link', error);
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       await navigator.clipboard.writeText(url);
     }
-  } catch (error) {
-    console.warn('Failed to share deep link', error);
   }
 };
 

@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 
-export async function POST() {
-  const uuid = crypto.randomUUID().replace(/-/g, '');
+export async function POST(req: Request) {
+  const { amount, memo } = await req.json().catch(() => ({}));
+  if (typeof amount !== 'number') {
+    return NextResponse.json({ error: 'amount required' }, { status: 400 });
+  }
 
-  // TODO: Store the ID field in your database so you can verify the payment later
-
-  return NextResponse.json({ id: uuid });
+  return NextResponse.json({ ok: true, memo: memo ?? null });
 }

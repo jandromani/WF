@@ -6,14 +6,14 @@ import { Navigation } from '@/components/Navigation';
 import { Page } from '@/components/PageLayout';
 import { VerifyGate } from '@/components/verify/VerifyGate';
 import { useAuthStore } from '@/lib/stores/auth';
-import { MiniKit } from '@worldcoin/minikit-js';
+import { isWorldApp } from '@/lib/minikit';
 
 interface ProtectedShellProps {
   children: ReactNode;
 }
 
 export function ProtectedShell({ children }: ProtectedShellProps) {
-  const [isInstalled, setIsInstalled] = useState<boolean | null>(null);
+  const [worldAppInstalled, setWorldAppInstalled] = useState<boolean | null>(null);
   const [hydrated, setHydrated] = useState(false);
   useAuthStore((state) => state.worldIdVerified);
 
@@ -23,12 +23,15 @@ export function ProtectedShell({ children }: ProtectedShellProps) {
   }, []);
 
   useEffect(() => {
-    MiniKit.isInstalled()
-      .then(setIsInstalled)
-      .catch(() => setIsInstalled(false));
+    try {
+      const installed = isWorldApp();
+      setWorldAppInstalled(installed);
+    } catch {
+      setWorldAppInstalled(false);
+    }
   }, []);
 
-  if (!hydrated || isInstalled === null) {
+  if (!hydrated || worldAppInstalled === null) {
     return (
       <div className="flex min-h-dvh items-center justify-center text-sm text-gray-500">
         Cargando Mini App...
@@ -36,13 +39,13 @@ export function ProtectedShell({ children }: ProtectedShellProps) {
     );
   }
 
-  if (!isInstalled) {
+  if (!worldAppInstalled) {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-gray-50 px-6 text-center">
         <h1 className="text-2xl font-semibold text-gray-900">Ábreme en World App</h1>
         <p className="text-sm text-gray-600">
-          Esta experiencia está diseñada para ejecutarse dentro de World App. Usa
-          el código QR o el enlace directo para continuar.
+          Esta experiencia está diseñada para ejecutarse dentro de World App. Usa el código QR o el enlace
+          directo para continuar.
         </p>
       </div>
     );

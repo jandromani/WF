@@ -1,62 +1,24 @@
-export type NotificationPayload = {
-  title: string;
-  body: string;
-};
+import { create } from 'zustand';
 
-export type NotificationRecord = NotificationPayload & {
+export interface NotificationItem {
   id: string;
-  createdAt: number;
-};
+  title: string;
+  body?: string;
+}
 
-const MAX_QUEUE_LENGTH = 50;
+interface NotificationState {
+  notifications: NotificationItem[];
+  add: (notification: Omit<NotificationItem, 'id'>) => void;
+  clear: () => void;
+}
 
-const queue: NotificationRecord[] = [];
-const listeners = new Set<(notifications: NotificationRecord[]) => void>();
-
-const cloneQueue = () => queue.map((notification) => ({ ...notification }));
-
-const generateId = () => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-};
-
-const emit = () => {
-  const snapshot = cloneQueue();
-  listeners.forEach((listener) => {
-    listener(snapshot);
-  });
-};
-
-export const enqueueNotification = (
-  payload: NotificationPayload,
-): NotificationRecord => {
-  const record: NotificationRecord = {
-    id: generateId(),
-    createdAt: Date.now(),
-    ...payload,
-  };
-
-  queue.unshift(record);
-
-  if (queue.length > MAX_QUEUE_LENGTH) {
-    queue.length = MAX_QUEUE_LENGTH;
-  }
-
-  emit();
-
-  return record;
-};
-
-export const subscribeToNotificationQueue = (
-  listener: (notifications: NotificationRecord[]) => void,
-) => {
-  listeners.add(listener);
-  listener(cloneQueue());
-
-  return () => {
-    listeners.delete(listener);
-  };
-};
+export const useNotificationStore = create<NotificationState>((set) => ({
+  notifications: [],
+  add: (notification) => {
+    const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`;
+    set((state) => ({
+      notifications: [{ id, ...notification }, ...state.notifications].slice(0, 5),
+    }));
+  },
+  clear: () => set({ notifications: [] }),
+}));

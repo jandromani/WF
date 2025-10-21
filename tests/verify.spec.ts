@@ -53,7 +53,7 @@ test('bloquea pantalla si no verificado y se levanta tras verificar', async ({ p
   const gate = page.getByTestId('verification-gate');
   await expect(gate).toBeVisible();
 
-  await page.getByTestId('verify-device').click();
+  await page.getByTestId('verify-cta').click();
 
   await expect(gate).toBeHidden();
 });

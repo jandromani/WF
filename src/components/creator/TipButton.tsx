@@ -6,16 +6,19 @@ import { Button } from '@/components/common/Button';
 import { Confirm } from '@/components/common/Confirm';
 import { useToast } from '@/components/common/Toast';
 import { useAuthStore } from '@/lib/stores/auth';
+import { useNotificationStore } from '@/lib/stores/notifications';
 
 interface TipButtonProps {
+  creatorId: string;
   amount: number;
   onTip: (amount: number) => Promise<{ success: boolean }>;
 }
 
-export function TipButton({ amount, onTip }: TipButtonProps) {
+export function TipButton({ creatorId, amount, onTip }: TipButtonProps) {
   const [loading, setLoading] = useState(false);
   const { worldIdVerified } = useAuthStore();
   const { showToast } = useToast();
+  const addNotification = useNotificationStore((state) => state.add);
 
   return (
     <Confirm
@@ -31,6 +34,10 @@ export function TipButton({ amount, onTip }: TipButtonProps) {
           const result = await onTip(amount);
           if (result.success) {
             showToast('Tip enviado', 'success');
+            addNotification({
+              title: 'Tip enviado',
+              body: `Enviaste ${amount} WFANS a ${creatorId}`,
+            });
           } else {
             showToast('No se pudo enviar el tip', 'error');
           }
@@ -54,6 +61,7 @@ export function TipButton({ amount, onTip }: TipButtonProps) {
           }}
           loading={loading}
           disabled={!worldIdVerified}
+          data-testid={`tip-${creatorId}-${amount}`}
         >
           {amount} WFANS
         </Button>
