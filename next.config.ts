@@ -7,7 +7,7 @@ const contentSecurityPolicy = [
   "script-src 'self'",
   "connect-src 'self' https://worldchain-mainnet.g.alchemy.com https://developer.worldcoin.org",
   "font-src 'self'",
-  "frame-ancestors 'self'",
+  "frame-ancestors 'none'",
 ].join('; ');
 
 const nextConfig: NextConfig = {
@@ -34,6 +34,10 @@ const nextConfig: NextConfig = {
         {
           key: 'X-Frame-Options',
           value: 'SAMEORIGIN',
+        },
+        {
+          key: 'X-Content-Type-Options',
+          value: 'nosniff',
         },
       ],
     },

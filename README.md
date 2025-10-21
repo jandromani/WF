@@ -66,3 +66,10 @@ Los flujos cubiertos incluyen verificación World ID, reclamaciones y pagos (tip
 ## Contributing
 
 This template was made with help from the amazing [supercorp-ai](https://github.com/supercorp-ai) team.
+
+## Seguridad y despliegue
+
+- **Políticas CSP**: La cabecera `Content-Security-Policy` en `next.config.ts` restringe las fuentes por defecto a `'self'`, bloquea la incrustación con `frame-ancestors 'none'` y solo permite conexiones salientes hacia los servicios de Worldcoin configurados.
+- **Rate limiting**: Las verificaciones de World ID en `src/lib/worldid.ts` aplican un límite de cinco solicitudes por IP y por billetera cada cinco minutos, evitando abusos y repetición de pruebas.
+- **Higiene de entornos**: Mantén las variables sensibles fuera del control de versiones usando `.env.local` (y sus equivalentes de producción) y actualiza claves como `AUTH_SECRET` o tokens API antes de desplegar.
+- **Despliegue**: Ejecuta `yarn build`, `yarn lint` y `yarn test:e2e` como prerrequisito de despliegue, valida los orígenes permitidos en `next.config.ts` y sincroniza cualquier túnel o dominio con el portal de desarrolladores.
