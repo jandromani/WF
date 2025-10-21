@@ -34,6 +34,7 @@ export const UnlockButton = ({ post }: Props) => {
         type="button"
         onClick={handleUnlock}
         disabled={status === 'pending'}
+        data-testid="unlock-button"
         className="inline-flex h-10 items-center justify-center rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:bg-violet-300"
       >
         {status === 'pending' && 'Unlocking…'}
