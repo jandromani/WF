@@ -1,94 +1,45 @@
-'use client';
-
-export interface Post {
+export type Post = {
   id: string;
-  creatorId: string;
-  title: string;
-  summary: string;
-  price: number;
-  isLocked: boolean;
-  publishedAt: number;
-  coverImage?: string;
-}
-
-interface FeedState {
-  posts: Post[];
-}
-
-const listeners = new Set<(state: FeedState) => void>();
-
-const now = Date.now();
-
-const initialState: FeedState = {
-  posts: [
-    {
-      id: 'post-1',
-      creatorId: 'alex',
-      title: 'World Chain deep dive drop',
-      summary: 'Unlock the full set of renders from my latest World Chain concept art.',
-      price: 4,
-      isLocked: true,
-      publishedAt: now - 1000 * 60 * 45,
-    },
-    {
-      id: 'post-2',
-      creatorId: 'zara',
-      title: 'Studio session: unreleased track',
-      summary: 'Hear the raw cut of my upcoming single before anyone else.',
-      price: 3,
-      isLocked: false,
-      publishedAt: now - 1000 * 60 * 120,
-    },
-  ],
+  author: string;
+  content: string;
+  price?: number;
+  unlocked?: boolean;
+  createdAt: string;
 };
 
-let state: FeedState = initialState;
+let _posts: Post[] = [
+  { id: '1', author: 'alice', content: 'Hola WorldFans!', createdAt: new Date().toISOString() },
+  {
+    id: '2',
+    author: 'bob',
+    content: 'Contenido premium 🔒',
+    price: 10,
+    unlocked: false,
+    createdAt: new Date().toISOString(),
+  },
+];
 
-const clone = (value: FeedState): FeedState => ({
-  posts: value.posts.map((post) => ({ ...post })),
-});
+export async function listPosts(): Promise<Post[]> {
+  return _posts;
+}
 
-const notify = () => {
-  listeners.forEach((listener) => listener(clone(state)));
-};
+export type CreatePostInput = { content: string; price?: number; author?: string };
 
-const updatePost = (postId: string, updater: (post: Post) => void) => {
-  state = {
-    posts: state.posts.map((post) => {
-      if (post.id !== postId) {
-        return post;
-      }
-      const copy = { ...post };
-      updater(copy);
-      return copy;
-    }),
+export async function createPost(p: CreatePostInput): Promise<Post> {
+  const post: Post = {
+    id: crypto.randomUUID(),
+    createdAt: new Date().toISOString(),
+    author: p.author ?? 'anon',
+    content: p.content,
+    price: p.price,
+    unlocked: !p.price,
   };
-  notify();
-};
+  _posts = [post, ..._posts];
+  return post;
+}
 
-const api = {
-  subscribe(listener: (snapshot: FeedState) => void) {
-    listeners.add(listener);
-    listener(clone(state));
-    return () => listeners.delete(listener);
-  },
-  getSnapshot: () => clone(state),
-  async unlockPost(postId: string) {
-    updatePost(postId, (post) => {
-      post.isLocked = false;
-    });
-  },
-  async unlockPostsByCreator(creatorId: string) {
-    state = {
-      posts: state.posts.map((post) =>
-        post.creatorId === creatorId ? { ...post, isLocked: false } : post,
-      ),
-    };
-    notify();
-  },
-};
-
-export const feedService = api;
-export const feed = api;
-
-export type FeedService = typeof feedService;
+export async function unlockPost(id: string): Promise<Post> {
+  _posts = _posts.map((p) => (p.id === id ? { ...p, unlocked: true } : p));
+  const post = _posts.find((p) => p.id === id)!;
+  return post;
+}

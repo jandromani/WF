@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Button } from '@/components/common/Button';
 import { useToast } from '@/components/common/Toast';
 import { useAuthStore } from '@/lib/stores/auth';
+import { useNotificationStore } from '@/lib/stores/notifications';
 
 interface UnlockButtonProps {
   postId: string;
@@ -14,6 +15,7 @@ interface UnlockButtonProps {
 export function UnlockButton({ postId, onUnlock }: UnlockButtonProps) {
   const { worldIdVerified } = useAuthStore();
   const { showToast } = useToast();
+  const addNotification = useNotificationStore((state) => state.add);
   const [loading, setLoading] = useState(false);
 
   const handleUnlock = async () => {
@@ -26,6 +28,10 @@ export function UnlockButton({ postId, onUnlock }: UnlockButtonProps) {
     try {
       await onUnlock(postId);
       showToast('Contenido desbloqueado', 'success');
+      addNotification({
+        title: 'Contenido desbloqueado',
+        body: `Accediste al post ${postId}`,
+      });
     } catch (error) {
       console.error(error);
       showToast('No se pudo desbloquear el contenido', 'error');
@@ -41,6 +47,7 @@ export function UnlockButton({ postId, onUnlock }: UnlockButtonProps) {
       onClick={handleUnlock}
       loading={loading}
       disabled={!worldIdVerified}
+      data-testid={`unlock-${postId}`}
     >
       Desbloquear
     </Button>

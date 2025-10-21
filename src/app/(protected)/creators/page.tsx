@@ -27,12 +27,9 @@ export default function CreatorsPage() {
                 className="flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4"
               >
                 <div>
-                  <h2 className="text-base font-semibold text-gray-900">
-                    {creator.name}
-                  </h2>
-                  <p className="text-sm text-gray-500">{creator.description}</p>
-                  <p className="text-xs text-gray-400">
-                    {creator.subscribers.toLocaleString()} fans · {creator.subscriptionPrice} WFANS/mes
+                  <h2 className="text-base font-semibold text-gray-900">{creator.handle}</h2>
+                  <p className="text-sm text-gray-500">
+                    {creator.price} WFANS/mes · {creator.subscribers} fans
                   </p>
                 </div>
                 <span className="text-xs font-semibold text-gray-500">Ver perfil →</span>

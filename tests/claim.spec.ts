@@ -4,7 +4,7 @@ const parseBalance = (value: string) => Number(value.replace(/[^0-9.,-]/g, '').r
 
 test('claim habilitado actualiza el balance y muestra notificación', async ({ page }) => {
   await page.goto('/?world_app=1');
-  await page.getByTestId('verify-device').click();
+  await page.getByTestId('verify-cta').click();
   await expect(page.getByTestId('verification-gate')).toBeHidden();
 
   const balanceLocator = page.getByTestId('wallet-balance');

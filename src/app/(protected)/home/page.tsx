@@ -1,64 +1,95 @@
-import { auth } from '@/auth';
-import { CreatorShowcase } from '@/components/Creators';
-import { FeedList } from '@/components/Feed/FeedList';
-import { Page } from '@/components/PageLayout';
-import { Pay } from '@/components/Pay';
-import { UserInfo } from '@/components/UserInfo';
-import { VerifyGate } from '@/components/verify/VerifyGate';
-import { ViewPermissions } from '@/components/ViewPermissions';
-import { ClaimCard } from '@/components/ClaimCard';
-import { Feed } from '@/components/Feed';
+'use client';
+
+import { CreatorShowcase } from '@/components/creator/CreatorShowcase';
+import { Composer } from '@/components/feed/Composer';
+import { FeedList } from '@/components/feed/FeedList';
 import { NotificationCenter } from '@/components/NotificationCenter';
-import { QuickActions } from '@/components/QuickActions';
-import { VerificationGate } from '@/components/VerificationGate';
-import { WalletSummary } from '@/components/WalletSummary';
-import { Marble, TopBar } from '@worldcoin/mini-apps-ui-kit-react';
-
-import { useEffect } from 'react';
-
-import { BalanceCard } from '@/components/wallet/BalanceCard';
-import { ActivityList } from '@/components/wallet/ActivityList';
 import { ClaimCard } from '@/components/home/ClaimCard';
+import { ActivityList } from '@/components/wallet/ActivityList';
+import { BalanceCard } from '@/components/wallet/BalanceCard';
+import { BuyWFANSButton } from '@/components/wallet/BuyWFANSButton';
+import { VerifyGate } from '@/components/verify/VerifyGate';
+import { useCreators } from '@/lib/hooks/useCreators';
+import { useFeed } from '@/lib/hooks/useFeed';
 import { useWallet } from '@/lib/hooks/useWallet';
 import { useAuthStore } from '@/lib/stores/auth';
-import { useRouter } from 'next/navigation';
+import { useNotificationStore } from '@/lib/stores/notifications';
+import { pay } from '@/services/pay';
 
 export default function HomePage() {
-  const router = useRouter();
   const worldIdVerified = useAuthStore((state) => state.worldIdVerified);
-  const { balance, activity, claim, isLoading } = useWallet();
+  const { creators = [], subscribeToCreator } = useCreators();
+  const { posts = [], create, unlock, isLoading: feedLoading } = useFeed();
+  const { balance, activity, isLoading: walletLoading, claim, refresh, addActivity } = useWallet();
+  const addNotification = useNotificationStore((state) => state.add);
 
-  useEffect(() => {
-    if (worldIdVerified) {
-      router.replace('/feed');
+  const handleSubscribe = async (creatorId: string, price: number) => {
+    try {
+      await pay({ amount: price, memo: `subscribe:${creatorId}`, type: 'subscribe' });
+      await subscribeToCreator(creatorId);
+      addNotification({ title: 'Suscripción activa', body: `Apoyas a ${creatorId}` });
+      await refresh();
+      return { success: true };
+    } catch (error) {
+      console.error(error);
+      return { success: false };
     }
-  }, [router, worldIdVerified]);
+  };
+
+  const handleTip = async (creatorId: string, amount: number) => {
+    try {
+      await pay({ amount, memo: `tip:${creatorId}`, type: 'tip' });
+      await refresh();
+      return { success: true };
+    } catch (error) {
+      console.error(error);
+      return { success: false };
+    }
+  };
+
+  const handleUnlock = async (postId: string) => {
+    const post = posts.find((item) => item.id === postId);
+    try {
+      if (post?.price) {
+        await pay({ amount: post.price, memo: `unlock:${postId}`, type: 'unlock' });
+        await refresh();
+      } else {
+        await addActivity({ type: 'unlock', amount: post?.price, meta: `unlock:${postId}` });
+      }
+      await unlock(postId);
+      return { success: true };
+    } catch (error) {
+      console.error(error);
+      return { success: false };
+    }
+  };
 
   return (
-    <>
-      <Page.Header className="p-0">
-        <TopBar
-          title="Home"
-          endAdornment={
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold capitalize">
-                {session?.user.username}
-              </p>
-              <Marble src={session?.user.profilePictureUrl} className="w-12" />
-            </div>
-          }
+    <div className="space-y-6 pb-16">
+      <VerifyGate />
+      <NotificationCenter />
+      <section className="grid gap-4">
+        <BalanceCard balance={balance} isLoading={walletLoading} />
+        <div className="grid gap-4 md:grid-cols-2">
+          <ClaimCard disabled={!worldIdVerified} onClaim={claim} />
+          <BuyWFANSButton disabled={!worldIdVerified} />
+        </div>
+        <ActivityList items={activity} isLoading={walletLoading} />
+      </section>
+      <section className="grid gap-4">
+        <h2 className="text-xl font-semibold text-gray-900">Creadores destacados</h2>
+        <CreatorShowcase creators={creators} onSubscribe={handleSubscribe} onTip={handleTip} />
+      </section>
+      <section className="grid gap-4">
+        <Composer onSubmit={create} disabled={!worldIdVerified} />
+        <FeedList
+          posts={posts}
+          isLoading={feedLoading}
+          onUnlock={async (postId) => {
+            await handleUnlock(postId);
+          }}
         />
-      </Page.Header>
-      <Page.Main className="relative flex flex-col items-center justify-start gap-4 mb-16">
-        <VerificationGate />
-        <NotificationCenter />
-        <UserInfo />
-        <VerifyGate />
-        <Pay />
-        <QuickActions />
-        <Feed />
-        <ViewPermissions />
-      </Page.Main>
-    </>
+      </section>
+    </div>
   );
 }

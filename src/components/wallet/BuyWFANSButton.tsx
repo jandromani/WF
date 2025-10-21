@@ -18,7 +18,7 @@ export function BuyWFANSButton({ disabled }: BuyWFANSButtonProps) {
   const handleClick = async () => {
     setLoading(true);
     try {
-      const result = await buy();
+      const result = await buy(50);
       if (result.success) {
         showToast('Compra iniciada en World App', 'success');
       } else {

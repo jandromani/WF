@@ -2,44 +2,36 @@
 
 import useSWR from 'swr';
 
-import {
-  CreatorProfile,
-  CreatorSummary,
-  getCreator,
-  listCreators,
-  subscribe,
-  tip,
-} from '@/services/creators';
+import { Creator, getCreator, listCreators, subscribe } from '@/services/creators';
 
 interface CreatorsHook {
-  creators?: CreatorSummary[];
+  creators?: Creator[];
   isLoading: boolean;
   error?: Error;
-  subscribeToCreator: (id: string, price: number) => Promise<{ success: boolean }>;
+  subscribeToCreator: (id: string) => Promise<{ success: boolean }>;
   refresh: () => Promise<void>;
 }
 
 interface CreatorHook {
-  creator?: CreatorProfile | null;
+  creator?: Creator | null;
   isLoading: boolean;
   error?: Error;
-  subscribe: (price: number) => Promise<{ success: boolean }>;
-  tip: (amount: number) => Promise<{ success: boolean }>;
+  subscribe: () => Promise<{ success: boolean }>;
   refresh: () => Promise<void>;
 }
 
 const creatorsKey = ['creators'];
 
 export function useCreators(): CreatorsHook {
-  const { data, error, isLoading, mutate } = useSWR<CreatorSummary[], Error>(
+  const { data, error, isLoading, mutate } = useSWR<Creator[], Error>(
     creatorsKey,
     listCreators,
   );
 
-  const subscribeToCreator = async (id: string, price: number) => {
-    const result = await subscribe(id, price);
+  const subscribeToCreator = async (id: string) => {
+    const result = await subscribe(id);
     await mutate();
-    return result;
+    return { success: result };
   };
 
   return {
@@ -54,22 +46,16 @@ export function useCreators(): CreatorsHook {
 }
 
 export function useCreator(id: string): CreatorHook {
-  const { data, error, isLoading, mutate } = useSWR<CreatorProfile | null, Error>(
+  const { data, error, isLoading, mutate } = useSWR<Creator | null, Error>(
     ['creator', id],
     () => getCreator(id),
     { shouldRetryOnError: false },
   );
 
-  const subscribeHandler = async (price: number) => {
-    const result = await subscribe(id, price);
+  const subscribeHandler = async () => {
+    const result = await subscribe(id);
     await mutate();
-    return result;
-  };
-
-  const tipHandler = async (amount: number) => {
-    const result = await tip(id, amount);
-    await mutate();
-    return result;
+    return { success: result };
   };
 
   return {
@@ -77,7 +63,6 @@ export function useCreator(id: string): CreatorHook {
     isLoading,
     error: error ?? undefined,
     subscribe: subscribeHandler,
-    tip: tipHandler,
     refresh: async () => {
       await mutate();
     },

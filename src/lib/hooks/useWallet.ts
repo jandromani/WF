@@ -2,23 +2,17 @@
 
 import useSWR from 'swr';
 
-import {
-  WalletActivityItem,
-  WalletBalance,
-  buyWFANS,
-  claimDaily,
-  getActivity,
-  getBalance,
-} from '@/services/wallet';
+import { Activity, buyWFANS, claimDaily, getActivity, getBalance, recordActivity } from '@/services/wallet';
 
 interface WalletHook {
-  balance?: WalletBalance;
-  activity?: WalletActivityItem[];
+  balance?: number;
+  activity?: Activity[];
   isLoading: boolean;
   error?: Error;
   refresh: () => Promise<void>;
   claim: () => Promise<{ success: boolean; amount: number }>;
-  buy: () => Promise<{ success: boolean }>;
+  buy: (amount: number) => Promise<{ success: boolean }>;
+  addActivity: (activity: Omit<Activity, 'id' | 'ts'>) => Promise<void>;
 }
 
 const balanceKey = ['wallet', 'balance'];
@@ -30,14 +24,14 @@ export function useWallet(): WalletHook {
     isLoading: balanceLoading,
     error: balanceError,
     mutate: mutateBalance,
-  } = useSWR<WalletBalance, Error>(balanceKey, getBalance);
+  } = useSWR<number, Error>(balanceKey, getBalance);
 
   const {
     data: activity,
     isLoading: activityLoading,
     error: activityError,
     mutate: mutateActivity,
-  } = useSWR<WalletActivityItem[], Error>(activityKey, getActivity);
+  } = useSWR<Activity[], Error>(activityKey, getActivity);
 
   const isLoading = balanceLoading || activityLoading;
   const error = balanceError ?? activityError ?? undefined;
@@ -48,14 +42,20 @@ export function useWallet(): WalletHook {
 
   const claimHandler = async () => {
     const result = await claimDaily();
-    await refresh();
-    return result;
+    await mutateBalance(result.newBalance, { revalidate: false });
+    await mutateActivity();
+    return { success: result.ok, amount: result.amount };
   };
 
-  const buyHandler = async () => {
-    const result = await buyWFANS();
-    await refresh();
-    return result;
+  const buyHandler = async (amount: number) => {
+    const result = await buyWFANS(amount);
+    await mutateActivity();
+    return { success: result.ok };
+  };
+
+  const addActivity = async (input: Omit<Activity, 'id' | 'ts'>) => {
+    await recordActivity({ ...input, id: '', ts: Date.now() } as Activity);
+    await mutateActivity();
   };
 
   return {
@@ -66,5 +66,6 @@ export function useWallet(): WalletHook {
     refresh,
     claim: claimHandler,
     buy: buyHandler,
+    addActivity,
   };
 }

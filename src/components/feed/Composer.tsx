@@ -24,7 +24,10 @@ export function Composer({ onSubmit, disabled }: ComposerProps) {
     }
     setLoading(true);
     try {
-      await onSubmit({ content: content.trim(), isLocked: locked });
+      await onSubmit({
+        content: content.trim(),
+        price: locked ? 10 : undefined,
+      });
       setContent('');
       setLocked(false);
       showToast('Tu post se publicó correctamente', 'success');

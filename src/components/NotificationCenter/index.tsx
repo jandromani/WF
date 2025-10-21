@@ -1,33 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-
-import {
-  subscribeToNotifications,
-} from '@/lib/minikit';
-
-export type NotificationRecord = {
-  title: string;
-  body: string;
-  id: string;
-};
+import { useNotificationStore } from '@/lib/stores/notifications';
 
 export const NotificationCenter = () => {
-  const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
-
-  useEffect(() => {
-    const unsubscribe = subscribeToNotifications(({ title, body }) => {
-      setNotifications((prev) => [{
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        title,
-        body,
-      }, ...prev].slice(0, 3));
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, []);
+  const notifications = useNotificationStore((state) => state.notifications);
 
   if (!notifications.length) {
     return null;
@@ -40,10 +16,10 @@ export const NotificationCenter = () => {
           key={notification.id}
           className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-left shadow-sm"
         >
-          <p className="text-sm font-semibold text-blue-900">
-            {notification.title}
-          </p>
-          <p className="text-xs text-blue-800">{notification.body}</p>
+          <p className="text-sm font-semibold text-blue-900">{notification.title}</p>
+          {notification.body ? (
+            <p className="text-xs text-blue-800">{notification.body}</p>
+          ) : null}
         </div>
       ))}
     </div>

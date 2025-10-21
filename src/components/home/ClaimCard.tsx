@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { Button } from '@/components/common/Button';
 import { useToast } from '@/components/common/Toast';
+import { useNotificationStore } from '@/lib/stores/notifications';
 
 interface ClaimCardProps {
   disabled?: boolean;
@@ -12,6 +13,7 @@ interface ClaimCardProps {
 
 export function ClaimCard({ disabled, onClaim }: ClaimCardProps) {
   const { showToast } = useToast();
+  const addNotification = useNotificationStore((state) => state.add);
   const [loading, setLoading] = useState(false);
 
   const handleClaim = async () => {
@@ -20,6 +22,7 @@ export function ClaimCard({ disabled, onClaim }: ClaimCardProps) {
       const result = await onClaim();
       if (result.success) {
         showToast(`Reclamaste ${result.amount} WFANS`, 'success');
+        addNotification({ title: 'Claim completado', body: `Sumaste ${result.amount} WFANS` });
       } else {
         showToast('No se pudo reclamar la recompensa', 'error');
       }
@@ -45,6 +48,7 @@ export function ClaimCard({ disabled, onClaim }: ClaimCardProps) {
           disabled={disabled}
           loading={loading}
           className="md:self-start"
+          data-testid="claim-action"
         >
           Reclamar
         </Button>
