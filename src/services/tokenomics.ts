@@ -1,171 +1,228 @@
 import { addresses, abis } from '@/lib/worldfans-contracts';
-import { createPublicClient, formatUnits, http } from 'viem';
-import { worldchainSepolia } from 'viem/chains';
+import { getPublicClient } from '@/lib/viem';
+import { formatUnits } from 'viem';
 
-const rpcUrl =
-  process.env.NEXT_PUBLIC_WORLDCHAIN_RPC ??
-  worldchainSepolia.rpcUrls.default.http[0];
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
+const TOKENOMICS_WARNING_PREFIX = '[tokenomics] falling back to mock data';
 
-const publicClient = createPublicClient({
-  chain: worldchainSepolia,
-  transport: http(rpcUrl),
+interface TokenomicsBase {
+  isFallback: boolean;
+  error?: Error;
+}
+
+export interface SupplyStats extends TokenomicsBase {
+  total: number;
+  circulating: number;
+  burned: number;
+  decimals: number;
+  tokenAddress: `0x${string}`;
+}
+
+export interface EpochStats extends TokenomicsBase {
+  number: number;
+  emission: number;
+  nextHalvingBlock?: number;
+  controllerAddress: `0x${string}`;
+}
+
+export interface BurnStats extends TokenomicsBase {
+  burnRate: number;
+  pending: number;
+  lastEpoch: number;
+  decimals: number;
+  treasuryAddress: `0x${string}`;
+}
+
+const client = getPublicClient();
+
+let tokenDecimalsCache: number | undefined;
+
+const isConfigured = (address: `0x${string}`) => address !== ZERO_ADDRESS;
+
+const toDecimal = (value: bigint, decimals: number) =>
+  Number.parseFloat(formatUnits(value, decimals));
+
+const withFallback = async <T extends TokenomicsBase>(
+  fetcher: () => Promise<T>,
+  fallback: () => T,
+): Promise<T> => {
+  try {
+    return await fetcher();
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    console.warn(TOKENOMICS_WARNING_PREFIX, error);
+    const fallbackValue = fallback();
+    return { ...fallbackValue, error };
+  }
+};
+
+const getTokenDecimals = async (): Promise<number> => {
+  if (tokenDecimalsCache !== undefined) {
+    return tokenDecimalsCache;
+  }
+
+  if (!isConfigured(addresses.token)) {
+    throw new Error('Token address is not configured');
+  }
+
+  const decimals = (await client.readContract({
+    address: addresses.token,
+    abi: abis.token,
+    functionName: 'decimals',
+  })) as number;
+
+  tokenDecimalsCache = Number(decimals);
+  return tokenDecimalsCache;
+};
+
+const fallbackSupply = (): SupplyStats => ({
+  total: 21_000_000,
+  circulating: 12_345_678.9,
+  burned: 2_450_000,
+  decimals: 18,
+  tokenAddress: addresses.token,
+  isFallback: true,
 });
 
-const formatNumber = (value: bigint, decimals: number) =>
-  Number.parseFloat(formatUnits(value, decimals)).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+const fallbackEpoch = (): EpochStats => ({
+  number: 42,
+  emission: 50_000,
+  nextHalvingBlock: undefined,
+  controllerAddress: addresses.data,
+  isFallback: true,
+});
 
-export interface TokenomicsData {
-  supply: {
-    total: string;
-    circulating: string;
-    burned: string;
-  };
-  epoch: {
-    number: number;
-    emission: string;
-    nextHalvingBlock?: number;
-  };
-  burn: {
-    rate: string;
-    pending: string;
-    lastEpoch: number;
-  };
-  emissionsSchedule: Array<{ epoch: string; emission: string }>;
-  dynamicBurns: Array<{ trigger: string; burnRate: string }>;
-}
+const fallbackBurn = (): BurnStats => ({
+  burnRate: 6.2,
+  pending: 125_000,
+  lastEpoch: 41,
+  decimals: 18,
+  treasuryAddress: addresses.treasury,
+  isFallback: true,
+});
 
-async function readContractSafe<T>(fn: () => Promise<T>, fallback: T) {
-  try {
-    return await fn();
-  } catch (error) {
-    console.warn('[tokenomics] fallback read', error);
-    return fallback;
-  }
-}
+const fetchSupply = async (): Promise<SupplyStats> => {
+  const decimals = await getTokenDecimals();
 
-export async function getTokenomics(): Promise<TokenomicsData> {
-  const decimals = await readContractSafe(
-    () =>
-      publicClient.readContract({
-        address: addresses.token as `0x${string}`,
-        abi: abis.token,
-        functionName: 'decimals',
-      }) as Promise<number>,
-    18,
-  );
+  const totalSupplyPromise = client.readContract({
+    address: addresses.token,
+    abi: abis.token,
+    functionName: 'totalSupply',
+  }) as Promise<bigint>;
 
-  const totalSupply = await readContractSafe(
-    () =>
-      publicClient.readContract({
-        address: addresses.token as `0x${string}`,
-        abi: abis.token,
-        functionName: 'totalSupply',
-      }) as Promise<bigint>,
-    0n,
-  );
+  const circulatingPromise = isConfigured(addresses.data)
+    ? (client.readContract({
+        address: addresses.data,
+        abi: abis.data,
+        functionName: 'circulatingSupply',
+      }) as Promise<bigint>)
+    : totalSupplyPromise;
 
-  const circulatingSupply =
-    addresses.data && abis.data
-      ? await readContractSafe(
-          () =>
-            publicClient.readContract({
-              address: addresses.data as `0x${string}`,
-              abi: abis.data,
-              functionName: 'circulatingSupply',
-            }) as Promise<bigint>,
-          totalSupply,
-        )
-      : totalSupply;
-
-  const burnRate = await readContractSafe(
-    () =>
-      publicClient.readContract({
-        address: addresses.treasury as `0x${string}`,
-        abi: abis.treasury,
-        functionName: 'burnRate',
-      }) as Promise<bigint>,
-    0n,
-  );
-
-  const pendingBurn = await readContractSafe(
-    () =>
-      publicClient.readContract({
-        address: addresses.treasury as `0x${string}`,
+  const pendingBurnPromise = isConfigured(addresses.treasury)
+    ? (client.readContract({
+        address: addresses.treasury,
         abi: abis.treasury,
         functionName: 'pendingBurn',
-      }) as Promise<bigint>,
-    0n,
-  );
+      }) as Promise<bigint>)
+    : Promise.resolve(0n);
 
-  const lastBurnEpoch = await readContractSafe(
-    () =>
-      publicClient.readContract({
-        address: addresses.treasury as `0x${string}`,
-        abi: abis.treasury,
-        functionName: 'lastBurnEpoch',
-      }) as Promise<bigint>,
-    0n,
-  );
-
-  const epochData =
-    addresses.data && abis.data
-      ? await readContractSafe(
-          () =>
-            publicClient.readContract({
-              address: addresses.data as `0x${string}`,
-              abi: abis.data,
-              functionName: 'currentEpoch',
-            }) as Promise<[bigint, bigint]>,
-          [0n, 0n],
-        )
-      : [0n, 0n];
-
-  const nextHalving =
-    addresses.data && abis.data
-      ? await readContractSafe(
-          () =>
-            publicClient.readContract({
-              address: addresses.data as `0x${string}`,
-              abi: abis.data,
-              functionName: 'nextHalvingBlock',
-            }) as Promise<bigint>,
-          0n,
-        )
-      : 0n;
-
-  const [epochNumber, emissionRate] = epochData;
-
-  const burnRatePercent = Number.parseFloat(formatUnits(burnRate, 4)) * 100;
+  const [totalSupply, circulatingSupplyRaw, pendingBurnRaw] = await Promise.all([
+    totalSupplyPromise,
+    circulatingPromise,
+    pendingBurnPromise,
+  ]);
 
   return {
-    supply: {
-      total: formatNumber(totalSupply, decimals),
-      circulating: formatNumber(circulatingSupply, decimals),
-      burned: formatNumber(pendingBurn, decimals),
-    },
-    epoch: {
-      number: Number(epochNumber),
-      emission: formatNumber(emissionRate, decimals),
-      nextHalvingBlock: Number(nextHalving) || undefined,
-    },
-    burn: {
-      rate: `${burnRatePercent.toFixed(2)}%`,
-      pending: formatNumber(pendingBurn, decimals),
-      lastEpoch: Number(lastBurnEpoch),
-    },
-    emissionsSchedule: [
-      { epoch: 'Epoch 0', emission: '50,000 WLDY / day' },
-      { epoch: 'Epoch 1', emission: '40,000 WLDY / day' },
-      { epoch: 'Epoch 2', emission: '32,000 WLDY / day' },
-      { epoch: 'Epoch 3', emission: '25,600 WLDY / day' },
-    ],
-    dynamicBurns: [
-      { trigger: 'Subscription surge', burnRate: '5% auto-burn' },
-      { trigger: 'Creator milestone', burnRate: '8% weekly burn' },
-      { trigger: 'Premium unlock streak', burnRate: '12% bonus burn' },
-    ],
+    total: toDecimal(totalSupply, decimals),
+    circulating: toDecimal(circulatingSupplyRaw, decimals),
+    burned: toDecimal(pendingBurnRaw, decimals),
+    decimals,
+    tokenAddress: addresses.token,
+    isFallback: false,
   };
-}
+};
+
+const fetchEpoch = async (): Promise<EpochStats> => {
+  if (!isConfigured(addresses.data)) {
+    throw new Error('Data contract address is not configured');
+  }
+
+  const decimals = await getTokenDecimals();
+
+  const [epochData, nextHalvingBlockRaw] = await Promise.all([
+    client.readContract({
+      address: addresses.data,
+      abi: abis.data,
+      functionName: 'currentEpoch',
+    }) as Promise<[bigint, bigint]>,
+    client.readContract({
+      address: addresses.data,
+      abi: abis.data,
+      functionName: 'nextHalvingBlock',
+    }) as Promise<bigint>,
+  ]);
+
+  const [epochNumber, emissionRaw] = epochData;
+
+  return {
+    number: Number(epochNumber),
+    emission: toDecimal(emissionRaw, decimals),
+    nextHalvingBlock: Number(nextHalvingBlockRaw) || undefined,
+    controllerAddress: addresses.data,
+    isFallback: false,
+  };
+};
+
+const fetchBurn = async (): Promise<BurnStats> => {
+  if (!isConfigured(addresses.treasury)) {
+    throw new Error('Treasury contract address is not configured');
+  }
+
+  const decimals = await getTokenDecimals();
+
+  const [burnRateRaw, pendingBurnRaw, lastBurnEpochRaw] = await Promise.all([
+    client.readContract({
+      address: addresses.treasury,
+      abi: abis.treasury,
+      functionName: 'burnRate',
+    }) as Promise<bigint>,
+    client.readContract({
+      address: addresses.treasury,
+      abi: abis.treasury,
+      functionName: 'pendingBurn',
+    }) as Promise<bigint>,
+    client.readContract({
+      address: addresses.treasury,
+      abi: abis.treasury,
+      functionName: 'lastBurnEpoch',
+    }) as Promise<bigint>,
+  ]);
+
+  const burnRatePercent =
+    Number.parseFloat(formatUnits(burnRateRaw, 4)) * 100;
+
+  return {
+    burnRate: burnRatePercent,
+    pending: toDecimal(pendingBurnRaw, decimals),
+    lastEpoch: Number(lastBurnEpochRaw),
+    decimals,
+    treasuryAddress: addresses.treasury,
+    isFallback: false,
+  };
+};
+
+export const getSupply = () => withFallback(fetchSupply, fallbackSupply);
+
+export const getEpoch = () => withFallback(fetchEpoch, fallbackEpoch);
+
+export const getBurnStats = () => withFallback(fetchBurn, fallbackBurn);
+
+export const getTokenomics = async () => {
+  const [supply, epoch, burn] = await Promise.all([
+    getSupply(),
+    getEpoch(),
+    getBurnStats(),
+  ]);
+
+  return { supply, epoch, burn };
+};
