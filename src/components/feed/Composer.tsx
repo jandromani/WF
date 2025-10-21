@@ -32,7 +32,9 @@ export function Composer({ onSubmit, disabled }: ComposerProps) {
       setLocked(false);
       showToast('Tu post se publicó correctamente', 'success');
     } catch (error) {
-      console.error(error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error(error);
+      }
       showToast('No se pudo publicar el post', 'error');
     } finally {
       setLoading(false);

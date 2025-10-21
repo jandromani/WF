@@ -29,7 +29,11 @@ export function Confirm({
     const result = onConfirm?.();
     if (result instanceof Promise) {
       setLoading(true);
-      await result.catch(console.error);
+      await result.catch((error) => {
+        if (process.env.NODE_ENV !== 'production') {
+          console.error(error);
+        }
+      });
       setLoading(false);
     }
     setOpen(false);

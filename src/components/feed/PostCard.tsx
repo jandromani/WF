@@ -1,3 +1,5 @@
+import { memo, useMemo } from 'react';
+
 import { Post } from '@/services/feed';
 import { UnlockButton } from './UnlockButton';
 
@@ -6,14 +8,11 @@ interface PostCardProps {
   onUnlock?: (postId: string) => Promise<void>;
 }
 
-const formatDate = (value: string) =>
-  new Intl.DateTimeFormat('es-ES', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value));
-
-export function PostCard({ post, onUnlock }: PostCardProps) {
-  const isLocked = Boolean(post.price && !post.unlocked);
+const PostCardComponent = ({ post, onUnlock }: PostCardProps) => {
+  const formattedDate = useMemo(
+    () => new Date(post.createdAt).toLocaleString('es-ES'),
+    [post.createdAt],
+  );
 
   return (
     <article className="rounded-2xl border border-gray-200 bg-white p-5">
@@ -22,8 +21,8 @@ export function PostCard({ post, onUnlock }: PostCardProps) {
           <span className="text-sm font-semibold uppercase">{post.author[0] ?? '?'}</span>
         </div>
         <div>
-          <p className="text-sm font-semibold text-gray-900">{post.author}</p>
-          <p className="text-xs text-gray-500">{formatDate(post.createdAt)}</p>
+          <p className="text-sm font-semibold text-gray-900">{post.authorName}</p>
+          <p className="text-xs text-gray-500">{formattedDate}</p>
         </div>
       </header>
       <div className="mt-4 text-sm text-gray-800">
@@ -43,4 +42,7 @@ export function PostCard({ post, onUnlock }: PostCardProps) {
       </footer>
     </article>
   );
-}
+};
+
+export const PostCard = memo(PostCardComponent);
+PostCard.displayName = 'PostCard';

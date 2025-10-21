@@ -21,18 +21,22 @@ export const walletAuth = async () => {
     notBefore: new Date(Date.now() - 24 * 60 * 60 * 1000),
     statement: `Authenticate (${crypto.randomUUID().replace(/-/g, '')}).`,
   });
-  console.log('Result', result);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('Result', result);
+  }
   if (!result) {
     throw new Error('No response from wallet auth');
   }
 
   if (result.finalPayload.status !== 'success') {
-    console.error(
-      'Wallet authentication failed',
-      result.finalPayload.error_code,
-    );
+    if (process.env.NODE_ENV !== 'production') {
+      console.error(
+        'Wallet authentication failed',
+        result.finalPayload.error_code,
+      );
+    }
     return;
-  } else {
+  } else if (process.env.NODE_ENV !== 'production') {
     console.log(result.finalPayload);
   }
 

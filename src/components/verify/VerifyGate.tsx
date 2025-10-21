@@ -6,6 +6,7 @@ import { useState } from 'react';
 
 import { verify } from '@/lib/minikit';
 import { useAuthStore } from '@/lib/stores/auth';
+import { postProof } from '@/lib/worldid';
 
 type VerifyState = 'idle' | 'pending' | 'success' | 'error';
 
@@ -31,16 +32,28 @@ export function VerifyGate({ className }: VerifyGateProps) {
       const result = await verify(ACTION_ID);
       const status = result?.finalPayload?.status;
 
-      if (status !== 'success') {
-        throw new Error('Verification failed');
+      const response = await postProof({
+        payload: result.finalPayload,
+        action: 'test-action',
+      });
+
+      if (response?.verifyRes?.success) {
+        setWorldIdVerified(true);
+        setButtonState('success');
+      } else {
+        throw new Error('Verification rejected');
       }
 
       setState('success');
       setWorldIdVerified(true);
     } catch (error) {
-      console.error('Verification error', error);
-      setState('error');
-      setTimeout(() => setState('idle'), 2000);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Verification error', error);
+      }
+      setButtonState('failed');
+      setTimeout(() => {
+        setButtonState(undefined);
+      }, 2000);
     }
   };
 

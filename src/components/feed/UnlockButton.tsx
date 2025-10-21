@@ -33,7 +33,9 @@ export function UnlockButton({ postId, onUnlock }: UnlockButtonProps) {
         body: `Accediste al post ${postId}`,
       });
     } catch (error) {
-      console.error(error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error(error);
+      }
       showToast('No se pudo desbloquear el contenido', 'error');
     } finally {
       setLoading(false);

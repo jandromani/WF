@@ -50,7 +50,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const expectedSignedNonce = hashNonce({ nonce });
 
         if (signedNonce !== expectedSignedNonce) {
-          console.log('Invalid signed nonce');
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn('Invalid signed nonce');
+          }
           return null;
         }
 
@@ -59,7 +61,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const result = await verifySiweMessage(finalPayload, nonce);
 
         if (!result.isValid || !result.siweMessageData.address) {
-          console.log('Invalid final payload');
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn('Invalid final payload');
+          }
           return null;
         }
         // Optionally, fetch the user info from your own database
