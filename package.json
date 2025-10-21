@@ -15,6 +15,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@upstash/redis": "^1.35.6",
     "@worldcoin/mini-apps-ui-kit-react": "^1.0.2",
     "@worldcoin/minikit-js": "latest",
     "@worldcoin/minikit-react": "latest",
@@ -29,6 +30,7 @@
     "remark-html": "^16.0.1",
     "tailwind-merge": "^3.2.0",
     "viem": "2.23.5",
+    "zod": "^4.1.12",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
