@@ -1,9 +1,9 @@
 'use client';
-import { MiniKitProvider } from '@worldcoin/minikit-js/minikit-provider';
+import { setLocalizationConfig } from '@worldcoin/idkit';
 import { Session } from 'next-auth';
 import { SessionProvider } from 'next-auth/react';
 import dynamic from 'next/dynamic';
-import type { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 
 import { StoreHydrator } from '@/providers/StoreHydrator';
 
@@ -25,23 +25,31 @@ interface ClientProvidersProps {
  *     - Should be used only in development.
  *     - Enables an in-browser console for logging and debugging.
  *
- * - MiniKitProvider:
- *     - Required for MiniKit functionality.
+ * - IDKitProvider:
+ *     - Configures the IDKit widget to use the default locale.
  *
  * This component ensures both providers are available to all child components.
  */
+function IDKitProvider({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    setLocalizationConfig({ language: 'es' });
+  }, []);
+
+  return <>{children}</>;
+}
+
 export default function ClientProviders({
   children,
   session,
 }: ClientProvidersProps) {
   return (
     <ErudaProvider>
-      <MiniKitProvider>
+      <IDKitProvider>
         <SessionProvider session={session}>
           <StoreHydrator />
           {children}
         </SessionProvider>
-      </MiniKitProvider>
+      </IDKitProvider>
     </ErudaProvider>
   );
 }
