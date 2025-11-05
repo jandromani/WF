@@ -28,9 +28,15 @@ export function CreatorProfileView({ id }: CreatorProfileViewProps) {
   const handleSubscribe = async (creatorId: string, price: number) => {
     try {
       await pay({ amount: price, memo: `subscribe:${creatorId}`, type: 'subscribe' });
-      await subscribe();
+      const result = await subscribe();
+      if (!result.success) {
+        return { success: false };
+      }
       await refresh();
-      addNotification({ title: 'Suscripción activa', body: `Apoyas a ${creatorId}` });
+      addNotification({
+        title: 'Suscripción activa',
+        body: `Apoyas a ${creator.handle ?? creatorId}`,
+      });
       return { success: true };
     } catch (error) {
       console.error(error);
@@ -42,7 +48,10 @@ export function CreatorProfileView({ id }: CreatorProfileViewProps) {
     try {
       await pay({ amount, memo: `tip:${creator.id}`, type: 'tip' });
       await refresh();
-      addNotification({ title: 'Tip enviado', body: `Enviaste ${amount} WFANS a ${creator.id}` });
+      addNotification({
+        title: 'Tip enviado',
+        body: `Enviaste ${amount} WFANS a ${creator.handle ?? creator.id}`,
+      });
       return { success: true };
     } catch (error) {
       console.error(error);

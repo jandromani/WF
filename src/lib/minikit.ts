@@ -4,6 +4,10 @@ import { MiniKit, Tokens, tokenToDecimals } from '@worldcoin/minikit-js';
 const DEFAULT_RECIPIENT =
   process.env.NEXT_PUBLIC_PAY_ADDRESS ?? '0x0000000000000000000000000000000000000000';
 
+type MiniKitCommandResult = {
+  finalPayload: { status: string };
+};
+
 export const isWorldApp = () => {
   try {
     return MiniKit.isInstalled();
@@ -12,16 +16,16 @@ export const isWorldApp = () => {
   }
 };
 
-export const verify = async (action: string) => {
+export const verify = async (action: string): Promise<MiniKitCommandResult> => {
   try {
     return await MiniKit.commandsAsync.verify({ action });
   } catch (error) {
     console.warn('MiniKit verify fallback', error);
-    return { finalPayload: { status: 'success' } } as any;
+    return { finalPayload: { status: 'success' } };
   }
 };
 
-export const pay = async (p: { amount: number; memo?: string }) => {
+export const pay = async (p: { amount: number; memo?: string }): Promise<MiniKitCommandResult> => {
   const reference =
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
@@ -41,7 +45,7 @@ export const pay = async (p: { amount: number; memo?: string }) => {
     });
   } catch (error) {
     console.warn('MiniKit pay fallback', error);
-    return { finalPayload: { status: 'success' } } as any;
+    return { finalPayload: { status: 'success' } };
   }
 };
 

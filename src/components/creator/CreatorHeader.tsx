@@ -1,6 +1,6 @@
 import { memo } from 'react';
 
-import { CreatorProfile } from '@/services/creators';
+import { Creator } from '@/services/creators';
 
 interface CreatorHeaderProps {
   creator: Creator;

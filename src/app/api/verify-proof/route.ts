@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
 
 type Body = { merkle_root: string; nullifier_hash: string; proof: string; action?: string };
 
