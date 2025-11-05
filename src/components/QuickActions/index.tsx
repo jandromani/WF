@@ -18,11 +18,16 @@ const shareDeepLink = async (url: string, title: string) => {
   } catch (error) {
     console.warn('Failed to share deep link', error);
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      await navigator.clipboard.writeText(url);
-    }
-  } catch (error) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('Failed to share deep link', error);
+      try {
+        await navigator.clipboard.writeText(url);
+        if (process.env.NODE_ENV !== 'production') {
+          console.info('Copied deep link to clipboard as fallback');
+        }
+      } catch (clipboardError) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('Failed to copy deep link to clipboard', clipboardError);
+        }
+      }
     }
   }
 };
