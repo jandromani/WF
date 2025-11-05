@@ -4,6 +4,7 @@ import { ReactNode, useEffect, useState } from 'react';
 
 import { Navigation } from '@/components/Navigation';
 import { Page } from '@/components/PageLayout';
+import { SessionExpiryNotice } from '@/components/SessionExpiryNotice';
 import { VerifyGate } from '@/components/verify/VerifyGate';
 import { useAuthStore } from '@/lib/stores/auth';
 import { isWorldApp } from '@/lib/minikit';
@@ -54,6 +55,9 @@ export function ProtectedShell({ children }: ProtectedShellProps) {
   return (
     <Page>
       <Page.Main className="bg-gray-50 pb-28">
+        <div className="px-4 pt-4">
+          <SessionExpiryNotice />
+        </div>
         <VerifyGate className="mb-4" />
         <div className="px-4 pb-6">{children}</div>
       </Page.Main>
