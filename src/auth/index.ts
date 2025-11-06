@@ -1,17 +1,58 @@
-import { hashNonce } from '@/auth/wallet/client-helpers';
-import {
-  MiniAppWalletAuthSuccessPayload,
-  MiniKit,
-  verifySiweMessage,
-} from '@worldcoin/minikit-js';
+import { LOGIN_ACTION_ID, SESSION_LIMITS, isSessionDurationValid } from '@/auth/config';
+import { sessionStore } from '@/lib/session-store';
+import { verifyCloudProof, type ISuccessResult, VerificationLevel } from '@worldcoin/idkit';
 import NextAuth, { type DefaultSession } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
+
+const FALLBACK_PROFILE = (seed: string) =>
+  `https://avatar.vercel.sh/${encodeURIComponent(seed)}.svg?text=ID`;
+
+const formatWalletLabel = (wallet: string | null | undefined) => {
+  if (!wallet) {
+    return 'World ID User';
+  }
+
+  const normalized = wallet.trim();
+  if (!normalized.startsWith('0x') || normalized.length < 10) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, 6)}…${normalized.slice(-4)}`;
+};
+
+const parseVerificationLevel = (level?: string | null): VerificationLevel => {
+  if (!level) {
+    return VerificationLevel.Orb;
+  }
+
+  const normalized = level.toLowerCase();
+  const available = Object.values(VerificationLevel) as string[];
+  return available.includes(normalized)
+    ? (normalized as VerificationLevel)
+    : VerificationLevel.Orb;
+};
+
+const parseSessionDuration = (value?: string | null) => {
+  if (!value) {
+    return SESSION_LIMITS.min;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || !isSessionDurationValid(parsed)) {
+    throw new Error('Invalid session duration requested');
+  }
+
+  return parsed;
+};
 
 declare module 'next-auth' {
   interface User {
     walletAddress: string;
     username: string;
     profilePictureUrl: string;
+    worldNullifier: string;
+    sessionExpiresAt: number;
+    sessionDurationMinutes: number;
   }
 
   interface Session {
@@ -19,7 +60,9 @@ declare module 'next-auth' {
       walletAddress: string;
       username: string;
       profilePictureUrl: string;
+      worldNullifier: string;
     } & DefaultSession['user'];
+    sessionDurationMinutes: number;
   }
 }
 
@@ -31,47 +74,75 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   session: { strategy: 'jwt' },
   providers: [
     Credentials({
-      name: 'World App Wallet',
+      name: 'World ID',
       credentials: {
-        nonce: { label: 'Nonce', type: 'text' },
-        signedNonce: { label: 'Signed Nonce', type: 'text' },
-        finalPayloadJson: { label: 'Final Payload', type: 'text' },
+        proof: { label: 'Proof', type: 'text' },
+        merkleRoot: { label: 'Merkle Root', type: 'text' },
+        nullifierHash: { label: 'World Nullifier', type: 'text' },
+        verificationLevel: { label: 'Verification Level', type: 'text' },
+        walletAddress: { label: 'Wallet Address', type: 'text' },
+        sessionDuration: { label: 'Session Duration (minutes)', type: 'text' },
       },
-      // @ts-expect-error TODO
-      authorize: async ({
-        nonce,
-        signedNonce,
-        finalPayloadJson,
-      }: {
-        nonce: string;
-        signedNonce: string;
-        finalPayloadJson: string;
-      }) => {
-        const expectedSignedNonce = hashNonce({ nonce });
+      authorize: async (credentials) => {
+        const appId = process.env.NEXT_PUBLIC_APP_ID as `app_${string}` | undefined;
 
-        if (signedNonce !== expectedSignedNonce) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.warn('Invalid signed nonce');
-          }
-          return null;
+        if (!appId) {
+          throw new Error('NEXT_PUBLIC_APP_ID is not configured');
         }
 
-        const finalPayload: MiniAppWalletAuthSuccessPayload =
-          JSON.parse(finalPayloadJson);
-        const result = await verifySiweMessage(finalPayload, nonce);
-
-        if (!result.isValid || !result.siweMessageData.address) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.warn('Invalid final payload');
-          }
-          return null;
+        if (!credentials) {
+          throw new Error('Missing World ID credentials');
         }
-        // Optionally, fetch the user info from your own database
-        const userInfo = await MiniKit.getUserInfo(finalPayload.address);
+
+        const {
+          proof,
+          merkleRoot,
+          nullifierHash,
+          verificationLevel,
+          walletAddress,
+          sessionDuration,
+        } = credentials as Record<string, string | undefined>;
+
+        if (!proof || !merkleRoot || !nullifierHash) {
+          throw new Error('Incomplete World ID payload received');
+        }
+
+        const durationMinutes = parseSessionDuration(sessionDuration ?? null);
+        const verificationPayload: ISuccessResult = {
+          proof,
+          merkle_root: merkleRoot,
+          nullifier_hash: nullifierHash,
+          verification_level: parseVerificationLevel(verificationLevel ?? null),
+        };
+
+        const verification = await verifyCloudProof(
+          verificationPayload,
+          appId,
+          LOGIN_ACTION_ID,
+        );
+
+        if (!verification.success) {
+          throw new Error(verification.detail ?? 'World ID verification failed');
+        }
+
+        const expiresAt = Date.now() + durationMinutes * 60_000;
+        await sessionStore.save({
+          worldNullifier: nullifierHash,
+          walletAddress: walletAddress?.trim() || null,
+          createdAt: new Date().toISOString(),
+          expiresAt: new Date(expiresAt).toISOString(),
+        });
+
+        const normalizedWallet = walletAddress?.trim() || '';
 
         return {
-          id: finalPayload.address,
-          ...userInfo,
+          id: normalizedWallet || nullifierHash,
+          walletAddress: normalizedWallet,
+          username: formatWalletLabel(normalizedWallet || nullifierHash),
+          profilePictureUrl: FALLBACK_PROFILE(normalizedWallet || nullifierHash),
+          worldNullifier: nullifierHash,
+          sessionExpiresAt: expiresAt,
+          sessionDurationMinutes: durationMinutes,
         };
       },
     }),
@@ -83,17 +154,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.walletAddress = user.walletAddress;
         token.username = user.username;
         token.profilePictureUrl = user.profilePictureUrl;
+        token.worldNullifier = user.worldNullifier;
+        token.sessionExpiresAt = user.sessionExpiresAt;
+        token.sessionDurationMinutes = user.sessionDurationMinutes;
+        token.exp = Math.floor(user.sessionExpiresAt / 1000);
+      }
+
+      if (token.sessionExpiresAt && Date.now() >= (token.sessionExpiresAt as number)) {
+        return {};
       }
 
       return token;
     },
     session: async ({ session, token }) => {
+      const expiresAt = typeof token.sessionExpiresAt === 'number' ? token.sessionExpiresAt : null;
+
+      if (!expiresAt || Date.now() >= expiresAt) {
+        return null;
+      }
+
       if (token.userId) {
         session.user.id = token.userId as string;
-        session.user.walletAddress = token.address as string;
+        session.user.walletAddress = (token.walletAddress as string) ?? '';
         session.user.username = token.username as string;
         session.user.profilePictureUrl = token.profilePictureUrl as string;
+        session.user.worldNullifier = (token.worldNullifier as string) ?? '';
       }
+
+      session.expires = new Date(expiresAt).toISOString();
+      session.sessionDurationMinutes = (token.sessionDurationMinutes as number) ?? SESSION_LIMITS.min;
 
       return session;
     },

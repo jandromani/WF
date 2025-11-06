@@ -21,6 +21,7 @@
     "@fastify/rate-limit": "^10.1.0",
     "@supabase/supabase-js": "^2.48.1",
     "@upstash/redis": "^1.35.6",
+    "@worldcoin/idkit": "^2.4.2",
     "@worldcoin/mini-apps-ui-kit-react": "^1.0.2",
     "@worldcoin/minikit-js": "latest",
     "@worldcoin/minikit-react": "latest",
