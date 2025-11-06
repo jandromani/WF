@@ -2,47 +2,46 @@
 
 import useSWR from 'swr';
 
-import { Activity, buyWFANS, claimDaily, getActivity, getBalance, recordActivity } from '@/services/wallet';
+import { useWorldChainWalletContext } from '@/providers/WorldChainWalletProvider';
+import {
+  Activity,
+  buyWFANS,
+  claimDaily,
+  getActivity,
+  recordActivity,
+} from '@/services/wallet';
 
 interface WalletHook {
-  balance?: number;
+  address?: `0x${string}`;
+  balance: number;
   activity?: Activity[];
   isLoading: boolean;
+  status: string;
   error?: Error;
   refresh: () => Promise<void>;
   claim: () => Promise<{ success: boolean; amount: number }>;
   buy: (amount: number) => Promise<{ success: boolean }>;
   addActivity: (activity: Omit<Activity, 'id' | 'ts'>) => Promise<void>;
+  connect: () => Promise<void>;
+  disconnect: () => Promise<void>;
 }
 
-const balanceKey = ['wallet', 'balance'];
 const activityKey = ['wallet', 'activity'];
 
 export function useWallet(): WalletHook {
-  const {
-    data: balance,
-    isLoading: balanceLoading,
-    error: balanceError,
-    mutate: mutateBalance,
-  } = useSWR<number, Error>(balanceKey, getBalance);
+  const wallet = useWorldChainWalletContext();
+  const { data: activity, isLoading: activityLoading, mutate: mutateActivity } =
+    useSWR<Activity[]>(activityKey, getActivity);
 
-  const {
-    data: activity,
-    isLoading: activityLoading,
-    error: activityError,
-    mutate: mutateActivity,
-  } = useSWR<Activity[], Error>(activityKey, getActivity);
-
-  const isLoading = balanceLoading || activityLoading;
-  const error = balanceError ?? activityError ?? undefined;
+  const isLoading = activityLoading || wallet.loadingBalance;
 
   const refresh = async () => {
-    await Promise.all([mutateBalance(), mutateActivity()]);
+    await Promise.all([wallet.refreshBalance(), mutateActivity()]);
   };
 
   const claimHandler = async () => {
     const result = await claimDaily();
-    await mutateBalance(result.newBalance, { revalidate: false });
+    await wallet.refreshBalance();
     await mutateActivity();
     return { success: result.ok, amount: result.amount };
   };
@@ -59,13 +58,17 @@ export function useWallet(): WalletHook {
   };
 
   return {
-    balance,
+    address: wallet.address,
+    balance: wallet.balance,
     activity,
     isLoading,
-    error,
+    status: wallet.status,
+    error: wallet.error ? new Error(wallet.error) : undefined,
     refresh,
     claim: claimHandler,
     buy: buyHandler,
     addActivity,
+    connect: wallet.connect,
+    disconnect: wallet.disconnect,
   };
 }

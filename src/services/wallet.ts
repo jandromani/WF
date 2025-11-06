@@ -6,25 +6,20 @@ export type Activity = {
   ts: number;
 };
 
-let _balance = 1250.5;
-let _activity: Activity[] = [];
-
-export async function getBalance() {
-  return _balance;
-}
+let activities: Activity[] = [];
 
 export async function getActivity() {
-  return _activity.sort((a, b) => b.ts - a.ts);
+  return activities.sort((a, b) => b.ts - a.ts);
 }
 
 export async function recordActivity(a: Activity) {
-  _activity = [{ ...a, id: crypto.randomUUID(), ts: Date.now() }, ..._activity];
+  const next = { ...a, id: crypto.randomUUID(), ts: Date.now() };
+  activities = [next, ...activities].slice(0, 50);
 }
 
 export async function claimDaily(amount = 100) {
-  _balance += amount;
   await recordActivity({ type: 'claim', amount, ts: Date.now(), id: '' } as Activity);
-  return { ok: true, newBalance: _balance, amount };
+  return { ok: true, amount };
 }
 
 export async function buyWFANS(amount: number) {

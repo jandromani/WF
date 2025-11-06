@@ -30,7 +30,6 @@ export function VerifyGate({ className }: VerifyGateProps) {
 
     try {
       const result = await verify(ACTION_ID);
-      const status = result?.finalPayload?.status;
 
       const response = await postProof({
         payload: result.finalPayload,
@@ -39,7 +38,6 @@ export function VerifyGate({ className }: VerifyGateProps) {
 
       if (response?.verifyRes?.success) {
         setWorldIdVerified(true);
-        setButtonState('success');
       } else {
         throw new Error('Verification rejected');
       }
@@ -50,9 +48,9 @@ export function VerifyGate({ className }: VerifyGateProps) {
       if (process.env.NODE_ENV !== 'production') {
         console.error('Verification error', error);
       }
-      setButtonState('failed');
+      setState('error');
       setTimeout(() => {
-        setButtonState(undefined);
+        setState('idle');
       }, 2000);
     }
   };

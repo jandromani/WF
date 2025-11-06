@@ -1,14 +1,16 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { Suspense, useCallback, useEffect, useMemo } from 'react';
+import { Suspense, useCallback, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import { Marble, TopBar } from '@worldcoin/mini-apps-ui-kit-react';
 
-import { Page } from '@/components/PageLayout';
+import { useCreators } from '@/lib/hooks/useCreators';
+import { useFeed } from '@/lib/hooks/useFeed';
 import { useWallet } from '@/lib/hooks/useWallet';
 import { useAuthStore } from '@/lib/stores/auth';
+import { useNotificationStore } from '@/lib/stores/notifications';
+import { pay } from '@/services/pay';
 
 type SectionSkeletonProps = {
   className?: string;
@@ -77,7 +79,7 @@ const ViewPermissions = dynamic(
 
 const CreatorShowcase = dynamic(
   () =>
-    import('@/components/Creators').then((mod) => mod.CreatorShowcase),
+    import('@/components/creator/CreatorShowcase').then((mod) => mod.CreatorShowcase),
   { ssr: false, suspense: true },
 );
 
@@ -106,19 +108,31 @@ const ActivityList = dynamic(
 );
 
 export default function HomePage() {
-  const router = useRouter();
   const { data: session } = useSession();
   const worldIdVerified = useAuthStore((state) => state.worldIdVerified);
   const { creators = [], subscribeToCreator } = useCreators();
   const { posts = [], create, unlock, isLoading: feedLoading } = useFeed();
   const { balance, activity, isLoading: walletLoading, claim, refresh, addActivity } = useWallet();
   const addNotification = useNotificationStore((state) => state.add);
+  const isLoading = walletLoading || feedLoading;
+
+  const resolveCreatorLabel = useCallback(
+    (creatorId: string) => {
+      const creator = creators.find((item) => item.id === creatorId);
+      return creator?.handle ?? creator?.id ?? creatorId;
+    },
+    [creators],
+  );
 
   const handleSubscribe = async (creatorId: string, price: number) => {
     try {
       await pay({ amount: price, memo: `subscribe:${creatorId}`, type: 'subscribe' });
-      await subscribeToCreator(creatorId);
-      addNotification({ title: 'Suscripción activa', body: `Apoyas a ${creatorId}` });
+      const result = await subscribeToCreator(creatorId);
+      if (!result.success) {
+        return { success: false } as const;
+      }
+      const label = resolveCreatorLabel(creatorId);
+      addNotification({ title: 'Suscripción activa', body: `Apoyas a ${label}` });
       await refresh();
       return { success: true };
     } catch (error) {
@@ -130,6 +144,11 @@ export default function HomePage() {
   const handleTip = async (creatorId: string, amount: number) => {
     try {
       await pay({ amount, memo: `tip:${creatorId}`, type: 'tip' });
+      const label = resolveCreatorLabel(creatorId);
+      addNotification({
+        title: 'Tip enviado',
+        body: `Enviaste ${amount} WFANS a ${label}`,
+      });
       await refresh();
       return { success: true };
     } catch (error) {
@@ -148,6 +167,7 @@ export default function HomePage() {
         await addActivity({ type: 'unlock', amount: post?.price, meta: `unlock:${postId}` });
       }
       await unlock(postId);
+      addNotification({ title: 'Contenido desbloqueado', body: `Post ${postId} disponible` });
       return { success: true };
     } catch (error) {
       console.error(error);
@@ -156,7 +176,7 @@ export default function HomePage() {
   };
 
   const walletBalance = useMemo(() => balance, [balance]);
-  const walletActivity = useMemo(() => activity, [activity]);
+  const walletActivity = useMemo(() => activity ?? [], [activity]);
   const handleClaim = useCallback(() => claim(), [claim]);
   const claimDisabled = !worldIdVerified || isLoading;
 
@@ -178,53 +198,59 @@ export default function HomePage() {
   }, [user]);
 
   return (
-    <>
-      <Page.Header className="p-0">
-        <TopBar title="Home" endAdornment={topBarUser} />
-      </Page.Header>
-      <Page.Main className="mb-16 flex flex-col items-center justify-start gap-4">
-        <Suspense fallback={<SectionSkeleton className="h-28" />}>
-          <VerificationGate />
-        </Suspense>
-        <Suspense fallback={<SectionSkeleton className="h-24" />}>
-          <NotificationCenter />
-        </Suspense>
-        <Suspense fallback={<SectionSkeleton className="h-24" />}>
-          <UserInfo />
-        </Suspense>
-        <Suspense fallback={<SectionSkeleton className="h-36" />}>
-          <VerifyGate />
-        </Suspense>
-        <Suspense fallback={<SectionSkeleton className="h-40" />}>
-          <QuickActions />
-        </Suspense>
-        <Suspense fallback={<SectionSkeleton className="h-40" />}>
-          <Pay />
-        </Suspense>
-        <div className="grid w-full gap-4 lg:grid-cols-2">
-          <Suspense fallback={<SectionSkeleton className="h-32" />}>
-            <BalanceCard balance={walletBalance} isLoading={isLoading} />
-          </Suspense>
-          <Suspense fallback={<SectionSkeleton className="h-32" />}>
-            <ClaimCard disabled={claimDisabled} onClaim={handleClaim} />
-          </Suspense>
-        </div>
-        <Suspense fallback={<SectionSkeleton className="h-48" />}>
-          <ActivityList items={walletActivity} isLoading={isLoading} />
-        </Suspense>
-        <Suspense fallback={<SectionSkeleton className="h-40" />}>
-          <WalletSummary />
-        </Suspense>
-        <Suspense fallback={<SectionSkeleton className="h-48" />}>
-          <Feed />
-        </Suspense>
-        <Suspense fallback={<SectionSkeleton className="h-48" />}>
-          <CreatorShowcase />
+    <div className="space-y-5">
+      <TopBar title="Home" endAdornment={topBarUser} />
+      <Suspense fallback={<SectionSkeleton className="h-28" />}>
+        <VerificationGate />
+      </Suspense>
+      <Suspense fallback={<SectionSkeleton className="h-24" />}>
+        <NotificationCenter />
+      </Suspense>
+      <Suspense fallback={<SectionSkeleton className="h-24" />}>
+        <UserInfo />
+      </Suspense>
+      <Suspense fallback={<SectionSkeleton className="h-36" />}>
+        <VerifyGate />
+      </Suspense>
+      <Suspense fallback={<SectionSkeleton className="h-40" />}>
+        <QuickActions />
+      </Suspense>
+      <Suspense fallback={<SectionSkeleton className="h-40" />}>
+        <Pay />
+      </Suspense>
+      <div className="grid w-full gap-4 lg:grid-cols-2">
+        <Suspense fallback={<SectionSkeleton className="h-32" />}>
+          <BalanceCard balance={walletBalance} isLoading={walletLoading} />
         </Suspense>
         <Suspense fallback={<SectionSkeleton className="h-32" />}>
-          <ViewPermissions />
+          <ClaimCard disabled={claimDisabled} onClaim={handleClaim} />
         </Suspense>
-      </Page.Main>
-    </>
+      </div>
+      <Suspense fallback={<SectionSkeleton className="h-48" />}>
+        <ActivityList items={walletActivity} isLoading={walletLoading} />
+      </Suspense>
+      <Suspense fallback={<SectionSkeleton className="h-40" />}>
+        <WalletSummary />
+      </Suspense>
+      <Suspense fallback={<SectionSkeleton className="h-48" />}>
+        <Feed
+          posts={posts}
+          isLoading={feedLoading}
+          onCreate={create}
+          onUnlock={handleUnlock}
+          disableCreate={!worldIdVerified}
+        />
+      </Suspense>
+      <Suspense fallback={<SectionSkeleton className="h-48" />}>
+        <CreatorShowcase
+          creators={creators}
+          onSubscribe={handleSubscribe}
+          onTip={(creatorId, amount) => handleTip(creatorId, amount)}
+        />
+      </Suspense>
+      <Suspense fallback={<SectionSkeleton className="h-32" />}>
+        <ViewPermissions />
+      </Suspense>
+    </div>
   );
 }

@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { Button } from '@/components/common/Button';
 import { useToast } from '@/components/common/Toast';
 import { useAuthStore } from '@/lib/stores/auth';
-import { useNotificationStore } from '@/lib/stores/notifications';
 
 interface SubscribeButtonProps {
   creatorId: string;
@@ -16,7 +15,6 @@ interface SubscribeButtonProps {
 export function SubscribeButton({ creatorId, price, onSubscribe }: SubscribeButtonProps) {
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
-  const addNotification = useNotificationStore((state) => state.add);
   const { worldIdVerified } = useAuthStore();
 
   const handleSubscribe = async () => {
@@ -30,10 +28,6 @@ export function SubscribeButton({ creatorId, price, onSubscribe }: SubscribeButt
       const result = await onSubscribe(creatorId, price);
       if (result.success) {
         showToast('Suscripción completada en World App', 'success');
-        addNotification({
-          title: 'Suscripción activa',
-          body: `Te suscribiste a ${creatorId}`,
-        });
       } else {
         showToast('No se pudo completar la suscripción', 'error');
       }

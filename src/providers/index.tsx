@@ -1,11 +1,17 @@
 'use client';
-import { setLocalizationConfig } from '@worldcoin/idkit';
+import { MiniKitProvider as BaseMiniKitProvider } from '@worldcoin/minikit-js/minikit-provider';
 import { Session } from 'next-auth';
 import { SessionProvider } from 'next-auth/react';
 import dynamic from 'next/dynamic';
 import { ReactNode, useEffect } from 'react';
 
 import { StoreHydrator } from '@/providers/StoreHydrator';
+import { WorldChainWalletProvider } from '@/providers/WorldChainWalletProvider';
+import { env } from '@/lib/env';
+
+const MiniKitProvider = env.app.enableWldy
+  ? BaseMiniKitProvider
+  : ({ children }: { children: ReactNode }) => <>{children}</>;
 
 const ErudaProvider = dynamic(
   () => import('@/providers/Eruda').then((c) => c.ErudaProvider),
@@ -30,26 +36,17 @@ interface ClientProvidersProps {
  *
  * This component ensures both providers are available to all child components.
  */
-function IDKitProvider({ children }: { children: ReactNode }) {
-  useEffect(() => {
-    setLocalizationConfig({ language: 'es' });
-  }, []);
+export default function ClientProviders({ children, session }: ClientProvidersProps) {
+  const Content = (
+    <SessionProvider session={session}>
+      <StoreHydrator />
+      <WorldChainWalletProvider>{children}</WorldChainWalletProvider>
+    </SessionProvider>
+  );
 
-  return <>{children}</>;
-}
-
-export default function ClientProviders({
-  children,
-  session,
-}: ClientProvidersProps) {
   return (
     <ErudaProvider>
-      <IDKitProvider>
-        <SessionProvider session={session}>
-          <StoreHydrator />
-          {children}
-        </SessionProvider>
-      </IDKitProvider>
+      {MiniKitProvider ? <MiniKitProvider>{Content}</MiniKitProvider> : Content}
     </ErudaProvider>
   );
 }
