@@ -1,11 +1,11 @@
 import WorldFansData from '@/abi/WorldFansData.json';
-import WorldFansPay from '@/abi/TestContract.json';
+import PayWFANS from '@/abi/PayWFANS.json';
 import WorldFansToken from '@/abi/WorldFansToken.json';
 import WorldFansTreasury from '@/abi/WorldFansTreasury.json';
 import { env, ensureAddress } from '@/lib/env';
 import type { Abi } from 'viem';
 
-export type ContractKey = 'pay';
+export type ContractKey = 'pay' | 'data' | 'treasury' | 'token';
 
 type ContractConfig = {
   address: `0x${string}`;
@@ -35,13 +35,25 @@ export const abis = {
   token: WorldFansToken as Abi,
   treasury: WorldFansTreasury as Abi,
   data: WorldFansData as Abi,
-  pay: WorldFansPay as Abi,
+  pay: PayWFANS as Abi,
 } as const;
 
 export const worldFansContracts: Record<ContractKey, ContractConfig> = {
   pay: {
     address: addresses.pay,
     abi: abis.pay,
+  },
+  data: {
+    address: addresses.data,
+    abi: abis.data,
+  },
+  treasury: {
+    address: addresses.treasury,
+    abi: abis.treasury,
+  },
+  token: {
+    address: addresses.token,
+    abi: abis.token,
   },
 };
 

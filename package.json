@@ -13,19 +13,25 @@
     "lint": "next lint",
     "start": "next start",
     "test:e2e": "playwright test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "server": "tsx src/server/index.ts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.79.0",
+    "@fastify/cors": "^10.0.1",
+    "@fastify/rate-limit": "^10.1.0",
+    "@supabase/supabase-js": "^2.48.1",
     "@upstash/redis": "^1.35.6",
+    "@worldcoin/idkit": "^2.4.2",
     "@worldcoin/mini-apps-ui-kit-react": "^1.0.2",
     "@worldcoin/minikit-js": "latest",
     "@worldcoin/minikit-react": "latest",
     "clsx": "^2.1.1",
+    "fastify": "^5.2.1",
     "gray-matter": "^4.0.3",
     "iconoir-react": "^7.11.0",
     "next": "15.2.3",
     "next-auth": "^5.0.0-beta.25",
+    "pino": "^9.5.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "remark": "^15.0.1",
@@ -50,6 +56,7 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.0",
     "tailwindcss": "^4",
+    "tsx": "^4.19.2",
     "typescript": "^5"
   }
 }
